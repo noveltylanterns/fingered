@@ -416,33 +416,27 @@ func (s *Server) loadStatic(root, name string, utf8Required bool) ([]byte, bool,
 
 func (s *Server) runCGI(root, name string, req Request, utf8Required bool) ([]byte, bool, error) {
 	fullPath := filepath.Join(root, name)
-	info, err := os.Lstat(fullPath)
+	cgiFile, exists, err := openRegularExecNoFollow(fullPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, false, nil
-		}
-		return nil, true, err
+		return nil, exists, err
 	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return nil, true, fmt.Errorf("symlinks are not allowed")
+	if !exists {
+		return nil, false, nil
 	}
-	if !info.Mode().IsRegular() {
-		return nil, true, fmt.Errorf("not a regular file")
-	}
-	if info.Mode().Perm()&0111 == 0 {
-		return nil, true, fmt.Errorf("execute bit is required")
-	}
+	defer cgiFile.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), s.cfg.CGITimeout)
 	defer cancel()
 
+	binPath, err := os.Executable()
+	if err != nil {
+		return nil, true, err
+	}
 	jailPath := "/" + filepath.Base(name)
-	cmd := exec.CommandContext(ctx, jailPath)
-	cmd.Args = []string{jailPath}
-	cmd.Dir = "/"
+	cmd := exec.CommandContext(ctx, binPath, "-internal-cgi-helper", "-internal-cgi-root", root, "-internal-cgi-argv0", jailPath)
 	cmd.Env = []string{}
 	cmd.Stdin = bytes.NewReader([]byte(req.Canonical + "\n"))
-	cmd.SysProcAttr = &syscall.SysProcAttr{Chroot: root}
+	cmd.ExtraFiles = []*os.File{cgiFile}
 
 	var stdout cappedBuffer
 	stdout.max = s.cfg.CGIMaxStdoutBytes
@@ -545,11 +539,51 @@ func parseProxyLine(line string) (netip.Addr, error) {
 	if fields[1] != "TCP4" && fields[1] != "TCP6" {
 		return netip.Addr{}, errInvalidRequest
 	}
-	src, err := netip.ParseAddr(fields[2])
+	src, err := parseProxyAddr(fields[1], fields[2])
 	if err != nil {
 		return netip.Addr{}, errInvalidRequest
 	}
+	if _, err := parseProxyAddr(fields[1], fields[3]); err != nil {
+		return netip.Addr{}, errInvalidRequest
+	}
+	if err := parseProxyPort(fields[4]); err != nil {
+		return netip.Addr{}, errInvalidRequest
+	}
+	if err := parseProxyPort(fields[5]); err != nil {
+		return netip.Addr{}, errInvalidRequest
+	}
 	return src, nil
+}
+
+func parseProxyAddr(network, value string) (netip.Addr, error) {
+	ip, err := netip.ParseAddr(value)
+	if err != nil {
+		return netip.Addr{}, errInvalidRequest
+	}
+	switch network {
+	case "TCP4":
+		if !ip.Is4() {
+			return netip.Addr{}, errInvalidRequest
+		}
+	case "TCP6":
+		if !ip.Is6() {
+			return netip.Addr{}, errInvalidRequest
+		}
+	default:
+		return netip.Addr{}, errInvalidRequest
+	}
+	return ip, nil
+}
+
+func parseProxyPort(value string) error {
+	port, err := strconv.Atoi(value)
+	if err != nil {
+		return errInvalidRequest
+	}
+	if port < 1 || port > 65535 {
+		return errInvalidRequest
+	}
+	return nil
 }
 
 func peerAddr(addr net.Addr) netip.Addr {
@@ -631,6 +665,35 @@ func openRegularReadNoFollow(path string) (*os.File, bool, error) {
 	if !info.Mode().IsRegular() {
 		_ = file.Close()
 		return nil, true, fmt.Errorf("not a regular file")
+	}
+	return file, true, nil
+}
+
+func openRegularExecNoFollow(path string) (*os.File, bool, error) {
+	fd, err := syscall.Open(path, cgiOpenFlags, 0)
+	if err != nil {
+		if errors.Is(err, syscall.ENOENT) {
+			return nil, false, nil
+		}
+		return nil, true, err
+	}
+	file := os.NewFile(uintptr(fd), path)
+	info, err := file.Stat()
+	if err != nil {
+		_ = file.Close()
+		return nil, true, err
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		_ = file.Close()
+		return nil, true, fmt.Errorf("symlinks are not allowed")
+	}
+	if !info.Mode().IsRegular() {
+		_ = file.Close()
+		return nil, true, fmt.Errorf("not a regular file")
+	}
+	if info.Mode().Perm()&0111 == 0 {
+		_ = file.Close()
+		return nil, true, fmt.Errorf("execute bit is required")
 	}
 	return file, true, nil
 }

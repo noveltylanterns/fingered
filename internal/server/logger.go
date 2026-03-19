@@ -10,8 +10,14 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"unicode/utf8"
 
 	"fingered/internal/config"
+)
+
+const (
+	maxLogFieldBytes  = 160
+	logTruncationMark = "..."
 )
 
 type Logger struct {
@@ -168,14 +174,30 @@ func sanitizeLog(s string) string {
 		return "-"
 	}
 	var b strings.Builder
+	truncated := false
+
+appendLoop:
 	for _, r := range s {
 		switch {
 		case r == '\r' || r == '\n' || r == '\t':
+			if b.Len()+1 > maxLogFieldBytes {
+				truncated = true
+				break appendLoop
+			}
 			b.WriteByte(' ')
 		case r < 0x20 || r == 0x7f:
-			b.WriteString(`\x`)
-			b.WriteString(strconv.FormatInt(int64(r), 16))
+			chunk := `\x` + strconv.FormatInt(int64(r), 16)
+			if b.Len()+len(chunk) > maxLogFieldBytes {
+				truncated = true
+				break appendLoop
+			}
+			b.WriteString(chunk)
 		default:
+			size := utf8.RuneLen(r)
+			if size < 0 || b.Len()+size > maxLogFieldBytes {
+				truncated = true
+				break appendLoop
+			}
 			b.WriteRune(r)
 		}
 	}
@@ -183,5 +205,22 @@ func sanitizeLog(s string) string {
 	if out == "" {
 		return "-"
 	}
+	if truncated {
+		out = trimLogField(out, maxLogFieldBytes-len(logTruncationMark)) + logTruncationMark
+	}
 	return out
+}
+
+func trimLogField(s string, max int) string {
+	if max <= 0 {
+		return ""
+	}
+	for len(s) > max {
+		_, size := utf8.DecodeLastRuneInString(s)
+		if size <= 0 {
+			size = 1
+		}
+		s = s[:len(s)-size]
+	}
+	return strings.TrimSpace(s)
 }

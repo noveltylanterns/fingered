@@ -109,3 +109,64 @@ func FuzzSanitizeBody(f *testing.F) {
 		}
 	})
 }
+
+func FuzzParseProxyLine(f *testing.F) {
+	seeds := []string{
+		"PROXY TCP4 198.51.100.10 203.0.113.4 40000 79\r\n",
+		"PROXY TCP6 2001:db8::10 2001:db8::20 40000 79\r\n",
+		"PROXY TCP4 2001:db8::10 203.0.113.4 40000 79\r\n",
+		"PROXY TCP4 198.51.100.10 203.0.113.4 0 79\r\n",
+		"PROXY UNKNOWN 198.51.100.10 203.0.113.4 40000 79\r\n",
+	}
+	for _, seed := range seeds {
+		f.Add(seed)
+	}
+
+	f.Fuzz(func(t *testing.T, line string) {
+		src, err := parseProxyLine(line)
+		if err != nil {
+			return
+		}
+		fields := strings.Fields(trimLineEnding(line))
+		if len(fields) != 6 {
+			t.Fatalf("accepted malformed PROXY line: %q", line)
+		}
+		switch fields[1] {
+		case "TCP4":
+			if !src.Is4() {
+				t.Fatalf("accepted non-IPv4 source for TCP4: %q", line)
+			}
+		case "TCP6":
+			if !src.Is6() {
+				t.Fatalf("accepted non-IPv6 source for TCP6: %q", line)
+			}
+		default:
+			t.Fatalf("accepted unsupported PROXY network: %q", line)
+		}
+	})
+}
+
+func FuzzSanitizeLog(f *testing.F) {
+	seeds := []string{
+		"",
+		"hello",
+		"line1\r\nline2\tz",
+		strings.Repeat("a", maxLogFieldBytes+32),
+	}
+	for _, seed := range seeds {
+		f.Add(seed)
+	}
+
+	f.Fuzz(func(t *testing.T, s string) {
+		got := sanitizeLog(s)
+		if got == "" {
+			t.Fatal("sanitizeLog returned empty string")
+		}
+		if strings.ContainsAny(got, "\r\n\t") {
+			t.Fatalf("sanitizeLog left raw control characters in %q", got)
+		}
+		if len(got) > maxLogFieldBytes {
+			t.Fatalf("sanitizeLog returned %d bytes, want <= %d", len(got), maxLogFieldBytes)
+		}
+	})
+}
