@@ -68,6 +68,7 @@ Configuration keys:
 - `tls_cert`
 - `tls_key`
 - `tls_doc_root`
+- `tls_cgi_enable`
 
 Defaults:
 
@@ -86,6 +87,7 @@ TLS rules:
 - `tls_cert` and `tls_key` are required whenever `tls_enable` is not `no`.
 - `tls_cert` and `tls_key` are ignored when `tls_enable = no`.
 - `tls_doc_root` defaults to `doc_root` when unset.
+- `tls_cgi_enable` defaults to `cgi_enable` when unset.
 - `fingered` does not require any particular public CA model for `fingers`; operators may use CA-signed, self-signed, locally trusted, pinned, or private-CA certificates.
 - `fingered` v1 does not require client certificates and does not define any application behavior based on them.
 - The TLS listener is opt-in because `fingers://` remains experimental.
@@ -114,14 +116,14 @@ Shared component sanitization rules:
 Configuration key:
 
 - `relay_enable = yes|no`
-- `extend_finger = yes|no`
+- `tpl_extend = yes|no`
 - `port_out`
 - `tls_port_out`
 
 Default:
 
 - `relay_enable = no`
-- `extend_finger = no`
+- `tpl_extend = no`
 - `port_out = port`
 - `tls_port_out = tls_port`
 
@@ -132,7 +134,7 @@ Accepted plaintext Finger requests by default:
 - `target`
 - `/W target`
 
-If `extend_finger = yes`, the plaintext Finger listener also accepts the additional `fingers`-style flag syntax:
+If `tpl_extend = yes`, the plaintext Finger listener also accepts the additional `fingers`-style flag syntax:
 
 - zero or more flags before an optional target
 - bare flags like `/PLAN`
@@ -142,10 +144,10 @@ If `extend_finger = yes`, the plaintext Finger listener also accepts the additio
 Compatibility rules:
 
 - `relay_enable` affects both plaintext Finger and TLS `fingers`
-- `extend_finger` affects only the plaintext Finger listener
-- `fingers` requests use their own flag syntax regardless of `extend_finger`
+- `tpl_extend` affects only the plaintext Finger listener
+- `fingers` requests use their own flag syntax regardless of `tpl_extend`
 - relay chains are invalid on either listener unless `relay_enable = yes`
-- default installs must keep `extend_finger = no`
+- default installs must keep `tpl_extend = no`
 - extra flags never change static file selection or CGI target selection by themselves
 
 Flag validation and sanitization rules:
@@ -222,7 +224,7 @@ This means:
 - `finger://example.com/foo.txt` is invalid
 - `finger://example.com/alice@198.51.100.10` is valid only when `relay_enable = yes`
 
-When `extend_finger = yes`, plaintext Finger may also accept request lines such as:
+When `tpl_extend = yes`, plaintext Finger may also accept request lines such as:
 
 - `/PLAN`
 - `/PLAN foo`
@@ -324,15 +326,15 @@ Security rules:
 
 Configuration key:
 
-- `tpl_enable = yes|no`
+- `tpl_wrapper = yes|no`
 
 Default:
 
-- `tpl_enable = no`
+- `tpl_wrapper = no`
 
 Template wrapping is disabled by default for performance reasons.
 
-When `tpl_enable = yes`, `fingered` may wrap valid responses with optional header and footer fragments stored under the effective content root for that listener.
+When `tpl_wrapper = yes`, `fingered` may wrap valid responses with optional header and footer fragments stored under the effective content root for that listener.
 
 Static template lookup:
 
@@ -350,7 +352,7 @@ Template resolution rules:
 - If `.header.txt` does not exist and `cgi_enable = yes`, try `.header.cgi`.
 - For the bottom wrapper, prefer `.footer.txt`.
 - If `.footer.txt` does not exist and `cgi_enable = yes`, try `.footer.cgi`.
-- If neither file exists for a wrapper position, omit that wrapper silently.
+- If neither file exists for a wrapper position, omit that wrapper and log the skip when `log_errors = yes`.
 - If a selected wrapper file exists but is unreadable, invalid, times out, or fails sanitization, omit that wrapper and log an error if `log_errors = yes`.
 
 Template application rules:
@@ -359,8 +361,8 @@ Template application rules:
 - `Error: Invalid Request` must remain the exact standalone body with no header or footer.
 - Successful content responses may be wrapped.
 - `Error: No content configured for this request.` may be wrapped when the request itself was valid.
-- `credits_enable` applies to all valid responses, including the generic no-content response.
-- If `credits_enable = yes`, append the credits byline exactly once, after the fully assembled response body and after any footer include.
+- `tpl_credits` applies to all valid responses, including the generic no-content response.
+- If `tpl_credits = yes`, append the credits byline exactly once, after the fully assembled response body and after any footer include.
 - The credits block must begin with one blank line so there is a visible gap from the main response body.
 - The credits byline must not be emitted after the header fragment or after the main content as a separate intermediate step.
 - Template output is treated as plain text and is subject to the same sanitization and `CRLF` normalization rules as other response content.
@@ -412,8 +414,8 @@ All successful responses are plain text.
 - File-backed responses stream plaintext from the selected `.txt` file.
 - CGI-backed responses return sanitized plaintext emitted on `stdout`.
 - TLS `fingers` responses are UTF-8 plaintext as defined by the draft.
-- When `tpl_enable = yes`, optional header and footer content may be prepended and appended around valid responses.
-- When `credits_enable = yes`, append the credits byline once at the very end of the response.
+- When `tpl_wrapper = yes`, optional header and footer content may be prepended and appended around valid responses.
+- When `tpl_credits = yes`, append the credits byline once at the very end of the response.
 - No protocol headers are added.
 - Line endings are normalized to `CRLF`.
 - NUL bytes are not permitted in output.
@@ -472,8 +474,8 @@ Behavior:
 - `stdin` contains exactly one sanitized request line terminated with `LF`.
 - that canonical line is reconstructed from validated tokens only
 - raw client bytes, raw spacing, duplicate flags, and rejected tokens never reach CGI
-- for plaintext Finger without `extend_finger`, CGI stdin contains only the validated classic request form
-- for plaintext Finger with `extend_finger`, CGI stdin may include sanitized extra flags
+- for plaintext Finger without `tpl_extend`, CGI stdin contains only the validated classic request form
+- for plaintext Finger with `tpl_extend`, CGI stdin may include sanitized extra flags
 - for TLS `fingers`, CGI stdin may include sanitized flags native to that protocol
 - If a CGI script chooses not to read or parse that request line, the flags have no effect.
 - No request data is passed through environment variables.
@@ -688,7 +690,7 @@ Unknown configuration keys should be treated as startup errors.
 ### Optional Keys
 
 - `relay_enable`
-- `extend_finger`
+- `tpl_extend`
 - `tls_enable`
 - `tls_port`
 - `port_out`
@@ -703,8 +705,8 @@ Unknown configuration keys should be treated as startup errors.
 - `cgi_max_stdout_bytes`
 - `max_response_bytes`
 - `cgi_enable`
-- `tpl_enable`
-- `credits_enable`
+- `tpl_wrapper`
+- `tpl_credits`
 - `log_root`
 - `log_group`
 - `log_umask`
@@ -723,7 +725,7 @@ port = 7979
 doc_root = /home/finger/app/finger/
 
 relay_enable = no
-extend_finger = no
+tpl_extend = no
 
 tls_enable = no
 tls_port = 8179
@@ -741,8 +743,8 @@ cgi_max_stdout_bytes = 262144
 max_response_bytes = 262144
 
 cgi_enable = no
-tpl_enable = no
-credits_enable = yes
+tpl_wrapper = no
+tpl_credits = yes
 
 log_root = /home/finger/logs/fingered/
 log_group = finger
@@ -757,7 +759,7 @@ trusted_proxy_ips = 127.0.0.1,::1
 
 ## System Service and Installation
 
-An installer script named `install_fingered.sh` must accompany the daemon.
+Installer and teardown scripts named `install_fingered.sh` and `uninstall_fingered.sh` must accompany the daemon.
 
 Purpose:
 
@@ -765,12 +767,14 @@ Purpose:
 - create the content-owner and service users
 - install the default config and directories
 - optionally install a systemd unit
+- remove the installed runtime footprint for clean reinstalls
 
 Script requirements:
 
 - must be run as root
 - supports `--nosysd`
 - `--nosysd` skips systemd unit creation and enablement
+- `uninstall_fingered.sh` must take no arguments and remove the installed footprint
 
 Installer actions:
 
@@ -800,6 +804,20 @@ Installer actions:
 - install the sample config with `tls_enable = no`
 - set ownership and permissions appropriately
 - do not create `/srv/fingered/`
+
+Uninstaller actions:
+
+- stop and disable `fingered.service` when systemd is present
+- remove `/usr/local/sbin/fingered`
+- remove `/usr/local/bin/finger`
+- remove `/etc/systemd/system/fingered.service`
+- remove `/etc/systemd/system/fingered.service.d/` if present
+- remove `/etc/fingered/`
+- remove `/home/finger/`
+- remove the `fingered` user and group
+- remove the `finger` user and group
+- remove configured `doc_root`, `tls_doc_root`, and `log_root` only when they are inside `/home/finger/` or `/etc/fingered/`
+- skip external configured paths outside the managed tree and print that they were skipped
 
 Recommended ownership:
 

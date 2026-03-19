@@ -33,13 +33,13 @@ max_response_bytes = 262144
 doc_root = /home/finger/app/finger/
 
 # Enable .header.txt & .footer.txt template wrappers?
-tpl_enable = no
+tpl_wrapper = no
 
 # Enable credits?
-credits_enable = yes
+tpl_credits = yes
 
 # Enable extra fingers:// flags in finger://?
-extend_finger = no
+tpl_extend = no
 
 # Enable CGI?
 cgi_enable = no
@@ -62,6 +62,10 @@ tls_port = 8179
 # Use dedicated document root for fingers:// requests.
 # Defaults to regular `doc_root` if left unset.
 # tls_doc_root = /home/finger/app/fingers/
+
+# Override CGI enablement for fingers:// only.
+# Defaults to regular `cgi_enable` if left unset.
+# tls_cgi_enable = no
 
 ##
 ## LOGGING SETTINGS

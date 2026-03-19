@@ -35,7 +35,7 @@ func FuzzParseFingerRequest(f *testing.F) {
 			t.Fatalf("accepted invalid target: %q", req.Target)
 		}
 		if !extend && len(req.Flags) > 0 {
-			t.Fatalf("plain finger accepted flags with extend_finger disabled: %+v", req)
+			t.Fatalf("plain finger accepted flags with tpl_extend disabled: %+v", req)
 		}
 		if len(req.Flags) > maxFlagsPerRequest {
 			t.Fatalf("accepted too many flags: %d", len(req.Flags))

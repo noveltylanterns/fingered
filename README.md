@@ -36,6 +36,14 @@ sudo ./bin/install_fingered.sh --arch arm64
 sudo ./bin/install_fingered.sh --arch riscv64
 ```
 
+For a clean reset before reinstalling:
+
+```bash
+sudo ./bin/uninstall_fingered.sh
+```
+
+That removes the installed daemon, bundled client, config, systemd unit, managed `/home/finger/` tree, and the `finger` / `fingered` accounts. If you pointed `doc_root`, `tls_doc_root`, or `log_root` at paths outside `/home/finger/`, those external paths are left alone and must be removed manually.
+
 ## After Install
 
 The installer creates the users, config, and systemd unit, but it does not confirm that the daemon is serving content yet.
@@ -66,7 +74,7 @@ printf '\r\n' | nc -w 2 127.0.0.1 7979
 Expected output with the default config:
 
 - the contents of `index.txt`
-- the credits footer, because `credits_enable = yes` by default
+- the credits footer, because `tpl_credits = yes` by default
 
 4. Check logs if needed:
 

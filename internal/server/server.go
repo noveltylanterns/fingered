@@ -30,10 +30,11 @@ type Server struct {
 }
 
 type listenerMode struct {
-	protocol Protocol
-	port     int
-	docRoot  string
-	tls      bool
+	protocol  Protocol
+	port      int
+	docRoot   string
+	cgiEnable bool
+	tls       bool
 }
 
 type prepareAction struct {
@@ -111,17 +112,19 @@ func (s *Server) listenerModes() []listenerMode {
 	modes := make([]listenerMode, 0, 2)
 	if s.cfg.PlainEnabled() {
 		modes = append(modes, listenerMode{
-			protocol: ProtocolFinger,
-			port:     s.cfg.Port,
-			docRoot:  s.cfg.DocRoot,
+			protocol:  ProtocolFinger,
+			port:      s.cfg.Port,
+			docRoot:   s.cfg.DocRoot,
+			cgiEnable: s.cfg.CGIEnable,
 		})
 	}
 	if s.cfg.TLSEnabled() {
 		modes = append(modes, listenerMode{
-			protocol: ProtocolFingers,
-			port:     s.cfg.TLSPort,
-			docRoot:  s.cfg.EffectiveTLSDocRoot(),
-			tls:      true,
+			protocol:  ProtocolFingers,
+			port:      s.cfg.TLSPort,
+			docRoot:   s.cfg.EffectiveTLSDocRoot(),
+			cgiEnable: s.cfg.EffectiveTLSCGIEnable(),
+			tls:       true,
 		})
 	}
 	return modes
@@ -327,7 +330,7 @@ func (s *Server) resolveMainContent(req Request, mode listenerMode, clientIP, pe
 		return body, "hit"
 	}
 
-	if !s.cfg.CGIEnable {
+	if !mode.cgiEnable {
 		return []byte(NoContentBody), "miss"
 	}
 
@@ -356,20 +359,24 @@ func (s *Server) resolveTemplate(name string, req Request, mode listenerMode, cl
 	if exists {
 		if err != nil {
 			s.logContentError(mode, clientIP, peerIP, staticName, err)
+			s.logTemplateSkip(mode, clientIP, peerIP, name)
 			return nil
 		}
 		return body
 	}
-	if !s.cfg.CGIEnable {
+	if !mode.cgiEnable {
+		s.logTemplateSkip(mode, clientIP, peerIP, name)
 		return nil
 	}
 	cgiName := name + ".cgi"
 	body, exists, err = s.runCGI(mode.docRoot, cgiName, req, mode.protocol == ProtocolFingers)
 	if !exists {
+		s.logTemplateSkip(mode, clientIP, peerIP, name)
 		return nil
 	}
 	if err != nil {
 		s.logContentError(mode, clientIP, peerIP, cgiName, err)
+		s.logTemplateSkip(mode, clientIP, peerIP, name)
 		return nil
 	}
 	return body
@@ -505,6 +512,12 @@ func joinSegments(parts ...[]byte) []byte {
 func (s *Server) logContentError(mode listenerMode, clientIP, peerIP netip.Addr, name string, err error) {
 	if s.logger != nil {
 		s.logger.Error(string(mode.protocol), mode.port, clientIP, peerIP, fmt.Sprintf("%s: %v", name, err))
+	}
+}
+
+func (s *Server) logTemplateSkip(mode listenerMode, clientIP, peerIP netip.Addr, name string) {
+	if s.logger != nil {
+		s.logger.Error(string(mode.protocol), mode.port, clientIP, peerIP, fmt.Sprintf("skipping %s wrapper: no valid template found", name))
 	}
 }
 

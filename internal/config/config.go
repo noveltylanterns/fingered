@@ -29,6 +29,8 @@ type Config struct {
 	TLSCert           string
 	TLSKey            string
 	TLSDocRoot        string
+	TLSCGIEnable      bool
+	TLSCGIEnableSet   bool
 	ReadTimeout       time.Duration
 	WriteTimeout      time.Duration
 	MaxRequestBytes   int
@@ -90,12 +92,13 @@ func Load(path string) (Config, error) {
 		"bind_ip":              true,
 		"port":                 true,
 		"doc_root":             true,
-		"extend_finger":        true,
+		"tpl_extend":           true,
 		"tls_enable":           true,
 		"tls_port":             true,
 		"tls_cert":             true,
 		"tls_key":              true,
 		"tls_doc_root":         true,
+		"tls_cgi_enable":       true,
 		"read_timeout_ms":      true,
 		"write_timeout_ms":     true,
 		"max_request_bytes":    true,
@@ -103,8 +106,8 @@ func Load(path string) (Config, error) {
 		"cgi_max_stdout_bytes": true,
 		"max_response_bytes":   true,
 		"cgi_enable":           true,
-		"tpl_enable":           true,
-		"credits_enable":       true,
+		"tpl_wrapper":          true,
+		"tpl_credits":          true,
 		"log_root":             true,
 		"log_group":            true,
 		"log_umask":            true,
@@ -182,10 +185,10 @@ func applyValue(cfg *Config, key, value string) error {
 		cfg.Port = n
 	case "doc_root":
 		cfg.DocRoot = filepath.Clean(value)
-	case "extend_finger":
+	case "tpl_extend":
 		b, err := parseYesNo(value)
 		if err != nil {
-			return fmt.Errorf("invalid extend_finger: %w", err)
+			return fmt.Errorf("invalid tpl_extend: %w", err)
 		}
 		cfg.ExtendFinger = b
 	case "tls_enable":
@@ -206,6 +209,13 @@ func applyValue(cfg *Config, key, value string) error {
 		cfg.TLSKey = filepath.Clean(value)
 	case "tls_doc_root":
 		cfg.TLSDocRoot = filepath.Clean(value)
+	case "tls_cgi_enable":
+		b, err := parseYesNo(value)
+		if err != nil {
+			return fmt.Errorf("invalid tls_cgi_enable: %w", err)
+		}
+		cfg.TLSCGIEnable = b
+		cfg.TLSCGIEnableSet = true
 	case "read_timeout_ms":
 		d, err := parseMillis(value)
 		if err != nil {
@@ -248,16 +258,16 @@ func applyValue(cfg *Config, key, value string) error {
 			return fmt.Errorf("invalid cgi_enable: %w", err)
 		}
 		cfg.CGIEnable = b
-	case "tpl_enable":
+	case "tpl_wrapper":
 		b, err := parseYesNo(value)
 		if err != nil {
-			return fmt.Errorf("invalid tpl_enable: %w", err)
+			return fmt.Errorf("invalid tpl_wrapper: %w", err)
 		}
 		cfg.TPLEnable = b
-	case "credits_enable":
+	case "tpl_credits":
 		b, err := parseYesNo(value)
 		if err != nil {
-			return fmt.Errorf("invalid credits_enable: %w", err)
+			return fmt.Errorf("invalid tpl_credits: %w", err)
 		}
 		cfg.CreditsEnable = b
 	case "log_root":
@@ -428,4 +438,11 @@ func (c Config) EffectiveTLSDocRoot() string {
 		return c.TLSDocRoot
 	}
 	return c.DocRoot
+}
+
+func (c Config) EffectiveTLSCGIEnable() bool {
+	if c.TLSCGIEnableSet {
+		return c.TLSCGIEnable
+	}
+	return c.CGIEnable
 }

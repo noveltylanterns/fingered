@@ -1,0 +1,74 @@
+package server
+
+import (
+	"net/netip"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"fingered/internal/config"
+)
+
+func TestMissingTemplatesAreLoggedWhenSkipped(t *testing.T) {
+	tmp := t.TempDir()
+	docRoot := filepath.Join(tmp, "docroot")
+	logRoot := filepath.Join(tmp, "logs")
+
+	if err := os.MkdirAll(docRoot, 0o755); err != nil {
+		t.Fatalf("MkdirAll(docRoot) error = %v", err)
+	}
+	if err := os.MkdirAll(logRoot, 0o755); err != nil {
+		t.Fatalf("MkdirAll(logRoot) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(docRoot, "index.txt"), []byte("INDEX\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(index.txt) error = %v", err)
+	}
+
+	cfg := config.Default()
+	cfg.BindIP = netip.MustParseAddr("127.0.0.1")
+	cfg.Port = 79
+	cfg.DocRoot = docRoot
+	cfg.TPLEnable = true
+	cfg.CGIEnable = false
+	cfg.CreditsEnable = false
+	cfg.LogRoot = logRoot
+	cfg.LogErrors = true
+	cfg.LogRequests = false
+
+	srv, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	defer func() {
+		if err := srv.Close(); err != nil {
+			t.Fatalf("Close() error = %v", err)
+		}
+	}()
+
+	body, outcome := srv.buildValidResponse(
+		Request{},
+		listenerMode{protocol: ProtocolFinger, port: cfg.Port, docRoot: cfg.DocRoot},
+		netip.MustParseAddr("127.0.0.1"),
+		netip.MustParseAddr("127.0.0.1"),
+	)
+
+	if got := string(body); got != "INDEX\r\n" {
+		t.Fatalf("buildValidResponse() body = %q, want %q", got, "INDEX\r\n")
+	}
+	if outcome != "hit" {
+		t.Fatalf("buildValidResponse() outcome = %q, want %q", outcome, "hit")
+	}
+
+	logBytes, err := os.ReadFile(filepath.Join(logRoot, "error.log"))
+	if err != nil {
+		t.Fatalf("ReadFile(error.log) error = %v", err)
+	}
+	logText := string(logBytes)
+	if !strings.Contains(logText, "skipping .header wrapper: no valid template found") {
+		t.Fatalf("error log missing header skip message: %q", logText)
+	}
+	if !strings.Contains(logText, "skipping .footer wrapper: no valid template found") {
+		t.Fatalf("error log missing footer skip message: %q", logText)
+	}
+}

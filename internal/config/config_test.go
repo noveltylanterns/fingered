@@ -36,6 +36,9 @@ func TestLoadAppliesDefaults(t *testing.T) {
 	if cfg.TLSPort != 8179 {
 		t.Fatalf("TLSPort = %d, want 8179", cfg.TLSPort)
 	}
+	if cfg.EffectiveTLSCGIEnable() != false {
+		t.Fatalf("EffectiveTLSCGIEnable = %v, want false", cfg.EffectiveTLSCGIEnable())
+	}
 	if cfg.LogErrors != true {
 		t.Fatalf("LogErrors = %v, want true", cfg.LogErrors)
 	}
@@ -95,5 +98,96 @@ func TestLoadRequiresTLSPathsWhenEnabled(t *testing.T) {
 
 	if _, err := Load(path); err == nil {
 		t.Fatal("Load() error = nil, want tls path validation error")
+	}
+}
+
+func TestLoadAcceptsRenamedTemplateKeys(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "fingered.conf")
+	content := "" +
+		"bind_ip = 127.0.0.1\n" +
+		"port = 7979\n" +
+		"doc_root = /home/finger/app/public/\n" +
+		"tpl_extend = yes\n" +
+		"tpl_wrapper = yes\n" +
+		"tpl_credits = no\n"
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if !cfg.ExtendFinger {
+		t.Fatal("ExtendFinger = false, want true")
+	}
+	if !cfg.TPLEnable {
+		t.Fatal("TPLEnable = false, want true")
+	}
+	if cfg.CreditsEnable {
+		t.Fatal("CreditsEnable = true, want false")
+	}
+}
+
+func TestLoadRejectsLegacyTemplateKeyNames(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "fingered.conf")
+	content := "" +
+		"bind_ip = 127.0.0.1\n" +
+		"port = 7979\n" +
+		"doc_root = /home/finger/app/public/\n" +
+		"extend_finger = yes\n" +
+		"tpl_enable = yes\n" +
+		"credits_enable = no\n"
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := Load(path); err == nil {
+		t.Fatal("Load() error = nil, want unknown-key error for legacy names")
+	}
+}
+
+func TestLoadTLSCGIEnableFallsBackToCGIEnable(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "fingered.conf")
+	content := "" +
+		"bind_ip = 127.0.0.1\n" +
+		"port = 7979\n" +
+		"doc_root = /home/finger/app/public/\n" +
+		"cgi_enable = yes\n"
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if !cfg.EffectiveTLSCGIEnable() {
+		t.Fatal("EffectiveTLSCGIEnable() = false, want true")
+	}
+}
+
+func TestLoadTLSCGIEnableOverridesCGIEnable(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "fingered.conf")
+	content := "" +
+		"bind_ip = 127.0.0.1\n" +
+		"port = 7979\n" +
+		"doc_root = /home/finger/app/public/\n" +
+		"cgi_enable = no\n" +
+		"tls_cgi_enable = yes\n"
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if !cfg.EffectiveTLSCGIEnable() {
+		t.Fatal("EffectiveTLSCGIEnable() = false, want true")
 	}
 }
