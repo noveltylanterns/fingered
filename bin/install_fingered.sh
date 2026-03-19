@@ -74,8 +74,10 @@ if [ ! -f /etc/fingered/fingered.conf ]; then
 fi
 
 umask 027
+install -d -o finger -g finger -m 0750 /home/finger
 install -d -o finger -g finger -m 0750 /home/finger/app
 install -d -o finger -g finger -m 0750 /home/finger/app/public
+install -d -o finger -g finger -m 0750 /home/finger/logs
 install -d -o finger -g finger -m 2770 /home/finger/logs/fingered
 
 if grep -Eq '^[[:space:]]*log_errors[[:space:]]*=[[:space:]]*yes[[:space:]]*$' /etc/fingered/fingered.conf; then
