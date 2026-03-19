@@ -1,31 +1,79 @@
+###################################################
+###                                               #
+###  /etc/fingered/fingered/conf                  #
+###  Fingered daemon runtime configuration file.  #
+###                                               #
+###################################################
+
+##
+## CONNECTION SETTINGS
+##
+
+# Localhost-only on Port 7979 by default.
+# Bind to external-facing IP and 7979 to make public.
 bind_ip = 127.0.0.1
 port = 7979
 
-doc_root = /home/finger/app/public/
-extend_finger = no
+# Turn `proxy_protocol` on if serving behind Nginx.
+proxy_protocol = no
+# trusted_proxy_ips = 127.0.0.1,::1
 
-tls_enable = no
-tls_port = 8179
-# tls_cert = /etc/fingered/tls/fingered.crt
-# tls_key = /etc/fingered/tls/fingered.key
-# tls_doc_root = /home/finger/app/secure-public/
-
+# Timeout settings
 read_timeout_ms = 1000
 write_timeout_ms = 1000
 max_request_bytes = 256
-cgi_timeout_ms = 1000
-cgi_max_stdout_bytes = 262144
 max_response_bytes = 262144
 
-cgi_enable = no
+
+##
+## RENDERING SETTINGS
+##
+
+# Document root to serve .txt files from.
+doc_root = /home/finger/app/finger/
+
+# Enable .header.txt & .footer.txt template wrappers?
 tpl_enable = no
+
+# Enable credits?
 credits_enable = yes
 
+# Enable extra fingers:// flags in finger://?
+extend_finger = no
+
+# Enable CGI?
+cgi_enable = no
+cgi_timeout_ms = 1000
+cgi_max_stdout_bytes = 262144
+
+
+##
+## SSL/TLS SETTINGS
+##
+
+# Enable TLS?
+tls_enable = no
+tls_port = 8179
+
+# Certificate paths
+# tls_cert = /etc/fingered/tls/fingered.crt
+# tls_key = /etc/fingered/tls/fingered.key
+
+# Use dedicated document root for fingers:// requests.
+# Defaults to regular `doc_root` if left unset.
+# tls_doc_root = /home/finger/app/fingers/
+
+##
+## LOGGING SETTINGS
+##
+
+# Logging directory
 log_root = /home/finger/logs/fingered/
+
+# Umask for log files
 log_umask = 0007
+
+# Format to save logs as (rfc5424|rfc3164)
 log_format = rfc5424
 log_errors = yes
 log_requests = no
-
-proxy_protocol = no
-# trusted_proxy_ips = 127.0.0.1,::1
