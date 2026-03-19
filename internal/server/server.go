@@ -395,6 +395,9 @@ func (s *Server) loadStatic(root, name string, utf8Required bool) ([]byte, bool,
 	if err != nil {
 		return nil, exists, err
 	}
+	if !exists {
+		return nil, false, nil
+	}
 	defer f.Close()
 
 	raw, err := io.ReadAll(io.LimitReader(f, int64(s.cfg.MaxResponseBytes+1)))
@@ -595,6 +598,20 @@ func (c *bufferedConn) Read(p []byte) (int, error) {
 }
 
 func openRegularReadNoFollow(path string) (*os.File, bool, error) {
+	info, err := os.Lstat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, false, nil
+		}
+		return nil, true, err
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return nil, true, fmt.Errorf("symlinks are not allowed")
+	}
+	if !info.Mode().IsRegular() {
+		return nil, true, fmt.Errorf("not a regular file")
+	}
+
 	fd, err := syscall.Open(path, syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
 	if err != nil {
 		if errors.Is(err, syscall.ENOENT) {
@@ -606,7 +623,7 @@ func openRegularReadNoFollow(path string) (*os.File, bool, error) {
 		return nil, true, err
 	}
 	file := os.NewFile(uintptr(fd), path)
-	info, err := file.Stat()
+	info, err = file.Stat()
 	if err != nil {
 		_ = file.Close()
 		return nil, true, err

@@ -41,6 +41,9 @@ func TestParseFingerRequestInvalid(t *testing.T) {
 		{"foo/bar\r\n", false},
 		{"foo@bar\r\n", false},
 		{"alice smith\r\n", false},
+		{"..\r\n", false},
+		{".hidden\r\n", false},
+		{"hidden.\r\n", false},
 		{"/W  alice\r\n", false},
 		{"/PLAN / bad\r\n", true},
 	}

@@ -48,7 +48,7 @@ func TestMissingTemplatesAreLoggedWhenSkipped(t *testing.T) {
 
 	body, outcome := srv.buildValidResponse(
 		Request{},
-		listenerMode{protocol: ProtocolFinger, port: cfg.Port, docRoot: cfg.DocRoot},
+		listenerMode{protocol: ProtocolFinger, port: cfg.Port, docRoot: cfg.DocRoot, cgiEnable: cfg.CGIEnable},
 		netip.MustParseAddr("127.0.0.1"),
 		netip.MustParseAddr("127.0.0.1"),
 	)
@@ -70,5 +70,77 @@ func TestMissingTemplatesAreLoggedWhenSkipped(t *testing.T) {
 	}
 	if !strings.Contains(logText, "skipping .footer wrapper: no valid template found") {
 		t.Fatalf("error log missing footer skip message: %q", logText)
+	}
+}
+
+func TestMissingStaticContentDoesNotLogError(t *testing.T) {
+	tmp := t.TempDir()
+	docRoot := filepath.Join(tmp, "docroot")
+	logRoot := filepath.Join(tmp, "logs")
+
+	if err := os.MkdirAll(docRoot, 0o755); err != nil {
+		t.Fatalf("MkdirAll(docRoot) error = %v", err)
+	}
+	if err := os.MkdirAll(logRoot, 0o755); err != nil {
+		t.Fatalf("MkdirAll(logRoot) error = %v", err)
+	}
+
+	cfg := config.Default()
+	cfg.BindIP = netip.MustParseAddr("127.0.0.1")
+	cfg.Port = 79
+	cfg.DocRoot = docRoot
+	cfg.TPLEnable = false
+	cfg.CGIEnable = false
+	cfg.CreditsEnable = false
+	cfg.LogRoot = logRoot
+	cfg.LogErrors = true
+	cfg.LogRequests = false
+
+	srv, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	defer func() {
+		if err := srv.Close(); err != nil {
+			t.Fatalf("Close() error = %v", err)
+		}
+	}()
+
+	body, outcome := srv.buildValidResponse(
+		Request{Target: "nosuchentry", Canonical: "nosuchentry"},
+		listenerMode{protocol: ProtocolFinger, port: cfg.Port, docRoot: cfg.DocRoot, cgiEnable: cfg.CGIEnable},
+		netip.MustParseAddr("127.0.0.1"),
+		netip.MustParseAddr("127.0.0.1"),
+	)
+
+	if got := string(body); got != NoContentBody {
+		t.Fatalf("buildValidResponse() body = %q, want %q", got, NoContentBody)
+	}
+	if outcome != "miss" {
+		t.Fatalf("buildValidResponse() outcome = %q, want %q", outcome, "miss")
+	}
+
+	logBytes, err := os.ReadFile(filepath.Join(logRoot, "error.log"))
+	if err != nil {
+		t.Fatalf("ReadFile(error.log) error = %v", err)
+	}
+	if len(logBytes) != 0 {
+		t.Fatalf("error log = %q, want empty", string(logBytes))
+	}
+}
+
+func TestOpenRegularReadNoFollowMissingFile(t *testing.T) {
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "nosuchentry.txt")
+
+	f, exists, err := openRegularReadNoFollow(path)
+	if f != nil {
+		_ = f.Close()
+	}
+	if err != nil {
+		t.Fatalf("openRegularReadNoFollow() error = %v", err)
+	}
+	if exists {
+		t.Fatal("openRegularReadNoFollow() exists = true, want false")
 	}
 }

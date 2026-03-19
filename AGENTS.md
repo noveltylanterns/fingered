@@ -556,6 +556,7 @@ Behavior:
 - If `log_errors = yes`, write `error.log` under `log_root`.
 - If `log_requests = yes`, write `access.log` under `log_root`.
 - If either log toggle is `no`, that log file is not opened or written.
+- If `log_errors = yes`, the daemon should also emit lifecycle entries for startup, restart, and shutdown.
 - If an enabled log file cannot be created or opened at startup, fail startup.
 - The installer must retro-fix the ownership and permissions of `log_root`, `error.log`, and `access.log` to match `log_group` and `log_umask` on rerun.
 

@@ -279,6 +279,9 @@ func validTargetComponent(s string) bool {
 	if strings.HasSuffix(lower, ".txt") || strings.HasSuffix(lower, ".cgi") {
 		return false
 	}
+	if s[0] == '.' || s[len(s)-1] == '.' || strings.Contains(s, "..") {
+		return false
+	}
 	for i := 0; i < len(s); i++ {
 		if !isTargetRune(s[i]) {
 			return false
