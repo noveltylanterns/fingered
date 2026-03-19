@@ -1,0 +1,31 @@
+bind_ip = 127.0.0.1
+port = 7979
+
+doc_root = /home/finger/app/public/
+extend_finger = no
+
+tls_enable = no
+tls_port = 8179
+# tls_cert = /etc/fingered/tls/fingered.crt
+# tls_key = /etc/fingered/tls/fingered.key
+# tls_doc_root = /home/finger/app/secure-public/
+
+read_timeout_ms = 1000
+write_timeout_ms = 1000
+max_request_bytes = 256
+cgi_timeout_ms = 1000
+cgi_max_stdout_bytes = 262144
+max_response_bytes = 262144
+
+cgi_enable = no
+tpl_enable = no
+credits_enable = yes
+
+log_root = /home/finger/logs/fingered/
+log_umask = 0007
+log_format = rfc5424
+log_errors = yes
+log_requests = no
+
+proxy_protocol = yes
+trusted_proxy_ips = 127.0.0.1,::1
