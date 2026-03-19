@@ -27,5 +27,5 @@ log_format = rfc5424
 log_errors = yes
 log_requests = no
 
-proxy_protocol = yes
-trusted_proxy_ips = 127.0.0.1,::1
+proxy_protocol = no
+# trusted_proxy_ips = 127.0.0.1,::1

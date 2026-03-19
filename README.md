@@ -39,7 +39,7 @@ sudo ./bin/install_fingered.sh --arch riscv64
 
 The installer creates the users, config, and systemd unit, but it does not confirm that the daemon is serving content yet.
 
-With the default config, `fingered` listens on `127.0.0.1:7979`.
+With the default config, `fingered` listens on `127.0.0.1:7979` with `proxy_protocol = no`.
 
 1. Create a test page:
 
@@ -81,6 +81,13 @@ sudo tail -n 50 /home/finger/logs/fingered/error.log
 ```
 
 If you want request logging too, set `log_requests = yes` in `/etc/fingered/fingered.conf` and restart the service.
+
+If you later put nginx stream in front of `fingered`, switch:
+
+```conf
+proxy_protocol = yes
+trusted_proxy_ips = 127.0.0.1,::1
+```
 
 
 ## Layout
