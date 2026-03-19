@@ -205,6 +205,11 @@ func (s *Server) serveConn(conn net.Conn, mode listenerMode) {
 	line, complete, err := readLine(reader, s.cfg.MaxRequestBytes)
 	if errors.Is(err, errLineTooLong) {
 		complete, err = discardLine(reader)
+		if shouldSilentlyClose(err, complete) {
+			return
+		}
+		s.writeAndLog(activeConn, mode, clientIP, peerIP, "", "invalid", []byte(InvalidRequestBody), start)
+		return
 	}
 	if shouldSilentlyClose(err, complete) {
 		return

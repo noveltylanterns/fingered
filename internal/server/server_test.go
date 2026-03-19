@@ -1,6 +1,8 @@
 package server
 
 import (
+	"bufio"
+	"net"
 	"net/netip"
 	"os"
 	"path/filepath"
@@ -143,4 +145,50 @@ func TestOpenRegularReadNoFollowMissingFile(t *testing.T) {
 	if exists {
 		t.Fatal("openRegularReadNoFollow() exists = true, want false")
 	}
+}
+
+func TestServeConnOversizedRequestReturnsInvalid(t *testing.T) {
+	tmp := t.TempDir()
+	docRoot := filepath.Join(tmp, "docroot")
+	if err := os.MkdirAll(docRoot, 0o755); err != nil {
+		t.Fatalf("MkdirAll(docRoot) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(docRoot, "index.txt"), []byte("INDEX\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(index.txt) error = %v", err)
+	}
+
+	cfg := config.Default()
+	cfg.BindIP = netip.MustParseAddr("127.0.0.1")
+	cfg.Port = 79
+	cfg.DocRoot = docRoot
+	cfg.CreditsEnable = false
+	cfg.LogErrors = false
+	cfg.LogRequests = false
+	cfg.ProxyProtocol = false
+
+	srv := &Server{cfg: cfg}
+	serverConn, clientConn := net.Pipe()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		srv.serveConn(serverConn, listenerMode{protocol: ProtocolFinger, port: cfg.Port, docRoot: cfg.DocRoot, cgiEnable: cfg.CGIEnable})
+	}()
+
+	payload := strings.Repeat("a", cfg.MaxRequestBytes+32) + "\r\n"
+	if _, err := clientConn.Write([]byte(payload)); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+
+	reply, err := bufio.NewReader(clientConn).ReadString('\n')
+	if err != nil {
+		t.Fatalf("ReadString() error = %v", err)
+	}
+	if reply != InvalidRequestBody {
+		t.Fatalf("reply = %q, want %q", reply, InvalidRequestBody)
+	}
+
+	if err := clientConn.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+	<-done
 }
