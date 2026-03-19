@@ -715,7 +715,7 @@ Unknown configuration keys should be treated as startup errors.
 bind_ip = 127.0.0.1
 port = 7979
 
-doc_root = /home/finger/app/public/
+doc_root = /home/finger/app/finger/
 
 relay_enable = no
 extend_finger = no
@@ -726,7 +726,7 @@ port_out = 79
 tls_port_out = 8179
 # tls_cert = /etc/fingered/tls/fingered.crt
 # tls_key = /etc/fingered/tls/fingered.key
-# tls_doc_root = /home/finger/app/secure-public/
+# tls_doc_root = /home/finger/app/fingers/
 
 read_timeout_ms = 1000
 write_timeout_ms = 1000
@@ -777,7 +777,7 @@ Installer actions:
 - set `finger` comment to `finger document root`
 - set `finger` shell to `/sbin/nologin`
 - create home directory `/home/finger/`
-- create document root `/home/finger/app/public/`
+- create document root `/home/finger/app/finger/`
 - create log directory `/home/finger/logs/fingered/`
 - create system user `fingered`
 - set `fingered` comment to `finger server daemon`
@@ -842,7 +842,7 @@ Recommended hardening baseline:
 - `CapabilityBoundingSet=CAP_NET_BIND_SERVICE CAP_SYS_CHROOT`
 - `PrivateTmp=yes`
 - `ProtectSystem=strict`
-- `ReadOnlyPaths=/home/finger/app/public`
+- `ReadOnlyPaths=/home/finger/app/finger`
 - `ReadWritePaths=/home/finger/logs/fingered`
 - `ProtectKernelTunables=yes`
 - `ProtectKernelModules=yes`
@@ -865,7 +865,7 @@ Local backend mode:
 ```conf
 bind_ip = 127.0.0.1
 port = 7979
-doc_root = /home/finger/app/public/
+doc_root = /home/finger/app/finger/
 tls_enable = no
 cgi_enable = no
 proxy_protocol = yes
@@ -890,7 +890,7 @@ Direct public mode:
 ```conf
 bind_ip = 203.0.113.10
 port = 79
-doc_root = /home/finger/app/public/
+doc_root = /home/finger/app/finger/
 tls_enable = no
 cgi_enable = no
 proxy_protocol = no
@@ -901,12 +901,12 @@ Dual-service mode:
 ```conf
 bind_ip = 203.0.113.10
 port = 79
-doc_root = /home/finger/app/public/
+doc_root = /home/finger/app/finger/
 tls_enable = yes_both
 tls_port = 8179
 tls_cert = /etc/fingered/tls/fingered.crt
 tls_key = /etc/fingered/tls/fingered.key
-tls_doc_root = /home/finger/app/secure-public/
+tls_doc_root = /home/finger/app/fingers/
 cgi_enable = no
 proxy_protocol = no
 ```

@@ -44,9 +44,9 @@ With the default config, `fingered` listens on `127.0.0.1:7979` with `proxy_prot
 1. Create a test page:
 
 ```bash
-sudo sh -c 'printf "hello from fingered\n" > /home/finger/app/public/index.txt'
-sudo chown finger:finger /home/finger/app/public/index.txt
-sudo chmod 640 /home/finger/app/public/index.txt
+sudo sh -c 'printf "hello from fingered\n" > /home/finger/app/finger/index.txt'
+sudo chown finger:finger /home/finger/app/finger/index.txt
+sudo chmod 640 /home/finger/app/finger/index.txt
 ```
 
 2. Start the service:
@@ -93,7 +93,7 @@ trusted_proxy_ips = 127.0.0.1,::1
 ## Layout
 
 - config: `/etc/fingered/fingered.conf`
-- plaintext content: `/home/finger/app/public/`
+- plaintext content: `/home/finger/app/finger/`
 - TLS cert/key directory: `/etc/fingered/tls/`
 - logs: `/home/finger/logs/fingered/`
 
