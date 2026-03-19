@@ -67,6 +67,10 @@ tls_port = 8179
 ## LOGGING SETTINGS
 ##
 
+# Enable logging
+log_errors = yes
+log_requests = no
+
 # Logging directory
 log_root = /home/finger/logs/fingered/
 
@@ -75,5 +79,3 @@ log_umask = 0007
 
 # Format to save logs as (rfc5424|rfc3164)
 log_format = rfc5424
-log_errors = yes
-log_requests = no
