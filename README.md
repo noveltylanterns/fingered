@@ -8,7 +8,7 @@ The real question is: Can the machine produce a `finger://` utility that won't f
 ## Features
 
 - Traditional `finger://` listener
-- Experimental TLS [fingers://](https://github.com/noveltylanterns/finger) listener
+- Experimental TLS [fingers://](https://github.com/noveltylanterns/fingers) listener
 - Strict request validation
 - Serve `finger://` content with a simple folder of .txt files.
 - Serve dynamic `finger://` content with CGI scripts.
