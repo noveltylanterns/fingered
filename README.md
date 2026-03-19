@@ -35,6 +35,53 @@ sudo ./bin/install_fingered.sh --arch arm64
 sudo ./bin/install_fingered.sh --arch riscv64
 ```
 
+## After Install
+
+The installer creates the users, config, and systemd unit, but it does not confirm that the daemon is serving content yet.
+
+With the default config, `fingered` listens on `127.0.0.1:7979`.
+
+1. Create a test page:
+
+```bash
+sudo sh -c 'printf "hello from fingered\n" > /home/finger/app/public/index.txt'
+sudo chown finger:finger /home/finger/app/public/index.txt
+sudo chmod 640 /home/finger/app/public/index.txt
+```
+
+2. Start the service:
+
+```bash
+sudo systemctl start fingered
+sudo systemctl status fingered --no-pager
+```
+
+3. Probe it locally:
+
+```bash
+printf '\r\n' | nc -w 2 127.0.0.1 7979
+```
+
+Expected output with the default config:
+
+- the contents of `index.txt`
+- the credits footer, because `credits_enable = yes` by default
+
+4. Check logs if needed:
+
+```bash
+sudo journalctl -u fingered -n 50 --no-pager
+sudo tail -n 50 /home/finger/logs/fingered/error.log
+```
+
+5. Run the packaged remote-style smoke probe against the local service:
+
+```bash
+./scripts/smoke_remote.sh 127.0.0.1 7979
+```
+
+If you want request logging too, set `log_requests = yes` in `/etc/fingered/fingered.conf` and restart the service.
+
 
 ## Layout
 
