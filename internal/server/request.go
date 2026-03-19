@@ -67,6 +67,21 @@ func readLine(r *bufio.Reader, max int) (string, bool, error) {
 	}
 }
 
+func discardLine(r *bufio.Reader) (bool, error) {
+	for {
+		ch, err := r.ReadByte()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return false, io.EOF
+			}
+			return false, err
+		}
+		if ch == '\n' {
+			return true, nil
+		}
+	}
+}
+
 func trimLineEnding(s string) string {
 	s = strings.TrimSuffix(s, "\n")
 	s = strings.TrimSuffix(s, "\r")

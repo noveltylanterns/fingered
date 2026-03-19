@@ -1,6 +1,10 @@
 package server
 
-import "testing"
+import (
+	"bufio"
+	"strings"
+	"testing"
+)
 
 func TestParseFingerRequestValid(t *testing.T) {
 	tests := []struct {
@@ -101,5 +105,34 @@ func TestCreditsBodyFormat(t *testing.T) {
 	want := "\r\n_____________________________\r\nfinger://lanterns.io/fingered\r\n"
 	if CreditsBody != want {
 		t.Fatalf("CreditsBody = %q, want %q", CreditsBody, want)
+	}
+}
+
+func TestDiscardLineComplete(t *testing.T) {
+	r := bufio.NewReader(strings.NewReader("rest of line\r\nnext"))
+	complete, err := discardLine(r)
+	if err != nil {
+		t.Fatalf("discardLine() error = %v", err)
+	}
+	if !complete {
+		t.Fatal("discardLine() complete = false, want true")
+	}
+	next, err := r.ReadString('t')
+	if err != nil {
+		t.Fatalf("ReadString() error = %v", err)
+	}
+	if next != "next" {
+		t.Fatalf("remaining buffered data = %q, want %q", next, "next")
+	}
+}
+
+func TestDiscardLineEOF(t *testing.T) {
+	r := bufio.NewReader(strings.NewReader("unterminated"))
+	complete, err := discardLine(r)
+	if err == nil {
+		t.Fatal("discardLine() error = nil, want EOF")
+	}
+	if complete {
+		t.Fatal("discardLine() complete = true, want false")
 	}
 }
