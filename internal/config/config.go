@@ -39,6 +39,7 @@ type Config struct {
 	TPLEnable         bool
 	CreditsEnable     bool
 	LogRoot           string
+	LogGroup          string
 	LogUmask          int
 	LogFormat         string
 	LogErrors         bool
@@ -62,6 +63,7 @@ func Default() Config {
 		TPLEnable:         false,
 		CreditsEnable:     true,
 		LogRoot:           "/home/finger/logs/fingered/",
+		LogGroup:          "finger",
 		LogUmask:          0007,
 		LogFormat:         LogFormatRFC5424,
 		LogErrors:         true,
@@ -104,6 +106,7 @@ func Load(path string) (Config, error) {
 		"tpl_enable":           true,
 		"credits_enable":       true,
 		"log_root":             true,
+		"log_group":            true,
 		"log_umask":            true,
 		"log_format":           true,
 		"log_errors":           true,
@@ -259,6 +262,12 @@ func applyValue(cfg *Config, key, value string) error {
 		cfg.CreditsEnable = b
 	case "log_root":
 		cfg.LogRoot = filepath.Clean(value)
+	case "log_group":
+		group := strings.TrimSpace(value)
+		if group == "" || strings.ContainsAny(group, " \t\r\n") {
+			return fmt.Errorf("invalid log_group")
+		}
+		cfg.LogGroup = group
 	case "log_umask":
 		n, err := strconv.ParseInt(value, 8, 32)
 		if err != nil {
@@ -353,6 +362,9 @@ func (c Config) Validate() error {
 	}
 	if (c.LogErrors || c.LogRequests) && (c.LogRoot == "" || !filepath.IsAbs(c.LogRoot)) {
 		return fmt.Errorf("log_root must be an absolute path when logging is enabled")
+	}
+	if c.LogGroup == "" {
+		return fmt.Errorf("log_group must not be empty")
 	}
 	if c.ProxyProtocol && len(c.TrustedProxyIPs) == 0 {
 		return fmt.Errorf("trusted_proxy_ips must be set when proxy_protocol=yes")

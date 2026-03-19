@@ -74,6 +74,9 @@ log_requests = no
 # Logging directory
 log_root = /home/finger/logs/fingered/
 
+# Group used for the log directory and log files.
+log_group = finger
+
 # Umask for log files
 log_umask = 0007
 

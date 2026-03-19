@@ -361,12 +361,13 @@ Template application rules:
 - `Error: No content configured for this request.` may be wrapped when the request itself was valid.
 - `credits_enable` applies to all valid responses, including the generic no-content response.
 - If `credits_enable = yes`, append the credits byline exactly once, after the fully assembled response body and after any footer include.
+- The credits block must begin with one blank line so there is a visible gap from the main response body.
 - The credits byline must not be emitted after the header fragment or after the main content as a separate intermediate step.
 - Template output is treated as plain text and is subject to the same sanitization and `CRLF` normalization rules as other response content.
 
 Credits byline text:
 
-`Powered by Fingered`
+`_____________________________`
 
 `finger://lanterns.io/fingered`
 
@@ -534,6 +535,7 @@ Logging is optional and file-based.
 Configuration keys:
 
 - `log_root`
+- `log_group`
 - `log_umask`
 - `log_format`
 - `log_errors`
@@ -542,8 +544,9 @@ Configuration keys:
 Behavior:
 
 - `log_root` defaults to `/home/finger/logs/fingered/`.
+- `log_group` defaults to `finger`.
 - `log_umask` controls permissions for created log files.
-- If `log_umask` is unset, default to `0007`, which yields log files with mode `0660`.
+- If `log_umask` is unset, default to `0007`, which yields log files with mode `0660` and a setgid log directory mode of `2770`.
 - If `log_format` is unset, default to `rfc5424`.
 - Supported `log_format` values are `rfc5424` and `rfc3164`.
 - `log_errors` is `yes|no`.
@@ -552,6 +555,7 @@ Behavior:
 - If `log_requests = yes`, write `access.log` under `log_root`.
 - If either log toggle is `no`, that log file is not opened or written.
 - If an enabled log file cannot be created or opened at startup, fail startup.
+- The installer must retro-fix the ownership and permissions of `log_root`, `error.log`, and `access.log` to match `log_group` and `log_umask` on rerun.
 
 `log_root` only matters when at least one of `log_errors` or `log_requests` is `yes`.
 
@@ -702,6 +706,7 @@ Unknown configuration keys should be treated as startup errors.
 - `tpl_enable`
 - `credits_enable`
 - `log_root`
+- `log_group`
 - `log_umask`
 - `log_format`
 - `log_errors`
@@ -740,6 +745,7 @@ tpl_enable = no
 credits_enable = yes
 
 log_root = /home/finger/logs/fingered/
+log_group = finger
 log_umask = 0007
 log_format = rfc5424
 log_errors = yes
@@ -769,6 +775,8 @@ Script requirements:
 Installer actions:
 
 - install `fingered` to `/usr/local/sbin/fingered`
+- install `/usr/local/sbin/fingered` as owner `root`, group `fingered`, mode `0750`
+- install the bundled `finger` client to `/usr/local/bin/finger` as owner `root`, group `root`, mode `0755`
 - `install_fingered.sh` accepts `--arch 386|amd64|arm64|riscv64`
 - default installer architecture is `amd64` when `--arch` is omitted
 - create `/etc/fingered/`
@@ -787,6 +795,7 @@ Installer actions:
 - add `fingered` to group `finger`
 - create `/home/finger/logs/fingered/error.log` if the installed sample config enables `log_errors = yes`
 - create `/home/finger/logs/fingered/access.log` only if the installed sample config enables `log_requests = yes`
+- retro-fix `log_root`, `error.log`, and `access.log` ownership and modes according to `log_group` and `log_umask`
 - install sample `/etc/fingered/fingered.conf`
 - install the sample config with `tls_enable = no`
 - set ownership and permissions appropriately
@@ -794,27 +803,33 @@ Installer actions:
 
 Recommended ownership:
 
+- `/usr/local/sbin/fingered` owned by `root:fingered`
+- `/etc/fingered/` owned by `root:fingered`
+- `/etc/fingered/fingered.conf` owned by `root:fingered`
 - config readable by root and service user as needed
 - `/etc/fingered/tls/` owned by `root:fingered`
 - `/home/finger/` owned by `finger:finger`
 - `doc_root` owned by `finger:finger`
 - any configured `tls_doc_root` should also be owned by `finger:finger`
-- `/home/finger/logs/fingered/` owned by `finger:finger`
+- `/home/finger/logs/fingered/` owned by `fingered:<log_group>`
 - `fingered` reads `doc_root` through membership in group `finger`
 - if `tls_doc_root` differs from `doc_root`, `fingered` reads that tree through the same group membership
-- log files owned by `fingered:finger`
-- the `finger` group must have write access to log files
-- `fingered` writes logs through its primary user and group membership in `finger`
+- log files owned by `fingered:<log_group>`
+- the configured `log_group` must have write access to log files
+- `fingered` writes logs through its primary user and its membership in `log_group`
 
 Recommended permissions:
 
+- `/usr/local/sbin/fingered` mode `0750`
+- `/etc/fingered/` mode `0750`
+- `/etc/fingered/fingered.conf` mode `0640`
 - use `umask 027` while creating the content tree
 - `/etc/fingered/tls/` mode `0750`
 - TLS certificate and key files should be `0640` and owned by `root:fingered`
 - directories in the content tree should be `0750`
 - files in the content tree should be `0640`
-- `/home/finger/logs/fingered/` mode `2770`
-- the setgid bit on `/home/finger/logs/fingered/` should keep new log files in group `finger`
+- `/home/finger/logs/fingered/` mode `2770` when `log_umask = 0007`
+- the setgid bit on `/home/finger/logs/fingered/` should keep new log files in group `log_group`
 - log files should default to `0660` when `log_umask` is unset
 
 ### systemd Unit Requirements

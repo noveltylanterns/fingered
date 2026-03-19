@@ -11,7 +11,7 @@ import (
 const (
 	InvalidRequestBody      = "Error: Invalid Request\r\n"
 	NoContentBody           = "Error: No content configured for this request.\r\n"
-	CreditsBody             = "Powered by Fingered\r\nfinger://lanterns.io/fingered\r\n"
+	CreditsBody             = "\r\n_____________________________\r\nfinger://lanterns.io/fingered\r\n"
 	maxTargetComponentBytes = 64
 	maxTargetChainDepth     = 16
 	maxFlagNameBytes        = 32

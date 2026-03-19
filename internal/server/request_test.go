@@ -93,3 +93,10 @@ func TestSanitizeBodyRejectsInvalidUTF8WhenRequired(t *testing.T) {
 		t.Fatal("sanitizeBody() error = nil, want invalid utf-8 error")
 	}
 }
+
+func TestCreditsBodyFormat(t *testing.T) {
+	want := "\r\n_____________________________\r\nfinger://lanterns.io/fingered\r\n"
+	if CreditsBody != want {
+		t.Fatalf("CreditsBody = %q, want %q", CreditsBody, want)
+	}
+}

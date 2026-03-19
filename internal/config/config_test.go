@@ -42,6 +42,9 @@ func TestLoadAppliesDefaults(t *testing.T) {
 	if cfg.LogRequests != false {
 		t.Fatalf("LogRequests = %v, want false", cfg.LogRequests)
 	}
+	if cfg.LogGroup != "finger" {
+		t.Fatalf("LogGroup = %q, want %q", cfg.LogGroup, "finger")
+	}
 }
 
 func TestLoadRejectsUnknownKey(t *testing.T) {
