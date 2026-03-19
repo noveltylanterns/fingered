@@ -1,25 +1,21 @@
 # fingered
 
-`fingered` is a small Finger daemon written in Go and shipped as a self-contained Linux binary.
+`fingered` is a small Finger daemon written in Go by GPT-5.4, and shipped as a self-contained Linux binary. The `finger://` protocol is a simple concept, so reimplementing software around it is trivial for a machine.
 
-The repo includes prebuilt binaries in `bin/` so users can run it locally without installing Go:
+The real question is: Can the machine produce a finger:// utility that won't fall apart? How much time will be required to debug and pentest it? Will the code be maintainable in 6 months? These are the questions we need answers for.
 
-- `bin/fingered-386`
-- `bin/fingered-amd64`
-- `bin/fingered-arm64`
-- `bin/fingered-riscv64`
-- `bin/fingered-dev`
 
-Current implementation highlights:
+## Features
 
-- plain `finger://` listener
-- optional TLS `fingers://` listener
-- strict request validation
-- flat `doc_root` mapping to `.txt`
-- optional `.cgi` fallback
-- optional header/footer templates and credits footer
-- optional access and error logging
+- Traditional `finger://` listener
+- Experimental TLS [fingers://](https://github.com/noveltylanterns/finger) listener
+- Strict request validation
+- Serve finger:// content with a simple folder of .txt files.
+- Serve dynamic finger:// content with CGI scripts.
+- Optional CGI-capable header & footer templates.
+- Optional access and error logging.
 - PROXY protocol support for nginx stream deployments
+
 
 ## Quick Start
 
@@ -39,6 +35,7 @@ sudo ./bin/install_fingered.sh --arch arm64
 sudo ./bin/install_fingered.sh --arch riscv64
 ```
 
+
 ## Layout
 
 - config: `/etc/fingered/fingered.conf`
@@ -55,27 +52,3 @@ go build -o ./bin/fingered-dev ./cmd/fingered
 ```
 
 Release-style binaries can be built with `CGO_ENABLED=0` for the target architecture.
-
-## Testing
-
-Unit tests:
-
-```bash
-go test ./...
-```
-
-Local smoke test:
-
-```bash
-./scripts/smoke_local.sh
-```
-
-Remote smoke test:
-
-```bash
-./scripts/smoke_remote.sh <host> [port] [selector]
-```
-
-## License
-
-`fingered` is licensed under the BSD 2-Clause License. See [`LICENSE`](LICENSE).
