@@ -29,8 +29,8 @@ mkdir -p "$BIN_DIR"
 GOCACHE=/tmp/go-build GOTMPDIR=/tmp/go-tmp go build -o "$BIN" ./cmd/fingered
 
 mkdir -p "$DOC_ROOT" "$LOG_ROOT"
-printf 'HEADER\n' > "${DOC_ROOT}/header.txt"
-printf 'FOOTER\n' > "${DOC_ROOT}/footer.txt"
+printf 'HEADER\n' > "${DOC_ROOT}/.header.txt"
+printf 'FOOTER\n' > "${DOC_ROOT}/.footer.txt"
 printf 'INDEX\n' > "${DOC_ROOT}/index.txt"
 printf 'HELLO\n' > "${DOC_ROOT}/hello.txt"
 
@@ -128,7 +128,8 @@ index_out="$(probe '\r\n')"
 assert_contains "$index_out" "HEADER"
 assert_contains "$index_out" "INDEX"
 assert_contains "$index_out" "FOOTER"
-assert_contains "$index_out" "Powered by Fingered"
+assert_contains "$index_out" "_____________________________"
+assert_contains "$index_out" "finger://lanterns.io/fingered"
 
 hello_out="$(probe 'hello\r\n')"
 assert_contains "$hello_out" "HELLO"

@@ -336,20 +336,20 @@ When `tpl_enable = yes`, `fingered` may wrap valid responses with optional heade
 
 Static template lookup:
 
-- `header.txt`
-- `footer.txt`
+- `.header.txt`
+- `.footer.txt`
 
 If `cgi_enable = yes`, dynamic template lookup is also allowed:
 
-- `header.cgi`
-- `footer.cgi`
+- `.header.cgi`
+- `.footer.cgi`
 
 Template resolution rules:
 
-- For the top wrapper, prefer `header.txt`.
-- If `header.txt` does not exist and `cgi_enable = yes`, try `header.cgi`.
-- For the bottom wrapper, prefer `footer.txt`.
-- If `footer.txt` does not exist and `cgi_enable = yes`, try `footer.cgi`.
+- For the top wrapper, prefer `.header.txt`.
+- If `.header.txt` does not exist and `cgi_enable = yes`, try `.header.cgi`.
+- For the bottom wrapper, prefer `.footer.txt`.
+- If `.footer.txt` does not exist and `cgi_enable = yes`, try `.footer.cgi`.
 - If neither file exists for a wrapper position, omit that wrapper silently.
 - If a selected wrapper file exists but is unreadable, invalid, times out, or fails sanitization, omit that wrapper and log an error if `log_errors = yes`.
 

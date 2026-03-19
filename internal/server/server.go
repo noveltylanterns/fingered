@@ -347,7 +347,7 @@ func (s *Server) resolveTemplates(req Request, mode listenerMode, clientIP, peer
 	if !s.cfg.TPLEnable {
 		return nil, nil
 	}
-	return s.resolveTemplate("header", req, mode, clientIP, peerIP), s.resolveTemplate("footer", req, mode, clientIP, peerIP)
+	return s.resolveTemplate(".header", req, mode, clientIP, peerIP), s.resolveTemplate(".footer", req, mode, clientIP, peerIP)
 }
 
 func (s *Server) resolveTemplate(name string, req Request, mode listenerMode, clientIP, peerIP netip.Addr) []byte {
