@@ -1,9 +1,4 @@
 .DS_Store
-bin/fingered-dev
-bin/fingered-386
-bin/fingered-amd64
-bin/fingered-arm64
-bin/fingered-riscv64
 *.log
 *.out
 *.test
