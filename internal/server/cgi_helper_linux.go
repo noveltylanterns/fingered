@@ -95,22 +95,47 @@ type cgiCapData struct {
 	Inheritable uint32
 }
 
+var (
+	cgiSetNoNewPrivs = func() error {
+		if _, _, errno := syscall.RawSyscall6(syscall.SYS_PRCTL, cgiPRNoNewPrivs, 1, 0, 0, 0, 0); errno != 0 && errno != syscall.EINVAL {
+			return errno
+		}
+		return nil
+	}
+	cgiClearSupplementaryGroups = func() error {
+		return syscall.Setgroups(nil)
+	}
+	cgiClearAmbientCaps = func() error {
+		if _, _, errno := syscall.RawSyscall6(syscall.SYS_PRCTL, cgiPRCapAmbient, cgiPRCapClear, 0, 0, 0, 0); errno != 0 && errno != syscall.EINVAL {
+			return errno
+		}
+		return nil
+	}
+	cgiDropCaps = func() error {
+		hdr := cgiCapHeader{Version: cgiCapVersion3}
+		data := [2]cgiCapData{}
+		_, _, errno := syscall.RawSyscall(syscall.SYS_CAPSET, uintptr(unsafe.Pointer(&hdr)), uintptr(unsafe.Pointer(&data[0])), 0)
+		runtime.KeepAlive(hdr)
+		runtime.KeepAlive(data)
+		if errno != 0 {
+			return errno
+		}
+		return nil
+	}
+)
+
 func dropCGIPrivileges() error {
-	if _, _, errno := syscall.RawSyscall6(syscall.SYS_PRCTL, cgiPRNoNewPrivs, 1, 0, 0, 0, 0); errno != 0 && errno != syscall.EINVAL {
-		return fmt.Errorf("set no_new_privs: %w", errno)
+	if err := cgiSetNoNewPrivs(); err != nil {
+		return fmt.Errorf("set no_new_privs: %w", err)
 	}
-
-	if _, _, errno := syscall.RawSyscall6(syscall.SYS_PRCTL, cgiPRCapAmbient, cgiPRCapClear, 0, 0, 0, 0); errno != 0 && errno != syscall.EINVAL {
-		return fmt.Errorf("clear ambient capabilities: %w", errno)
+	if err := cgiClearSupplementaryGroups(); err != nil {
+		return fmt.Errorf("clear supplementary groups: %w", err)
 	}
-
-	hdr := cgiCapHeader{Version: cgiCapVersion3}
-	data := [2]cgiCapData{}
-	_, _, errno := syscall.RawSyscall(syscall.SYS_CAPSET, uintptr(unsafe.Pointer(&hdr)), uintptr(unsafe.Pointer(&data[0])), 0)
-	runtime.KeepAlive(hdr)
-	runtime.KeepAlive(data)
-	if errno != 0 {
-		return fmt.Errorf("drop capabilities: %w", errno)
+	if err := cgiClearAmbientCaps(); err != nil {
+		return fmt.Errorf("clear ambient capabilities: %w", err)
+	}
+	if err := cgiDropCaps(); err != nil {
+		return fmt.Errorf("drop capabilities: %w", err)
 	}
 	return nil
 }

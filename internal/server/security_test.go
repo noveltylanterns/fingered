@@ -1,9 +1,11 @@
 package server
 
 import (
+	"errors"
 	"net/netip"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -126,5 +128,77 @@ func TestOpenRegularExecNoFollowRejectsNonExecutableFile(t *testing.T) {
 	}
 	if err == nil {
 		t.Fatal("openRegularExecNoFollow() error = nil, want execute-bit failure")
+	}
+}
+
+func TestDropCGIPrivilegesClearsSupplementaryGroupsBeforeCapabilities(t *testing.T) {
+	oldSetNoNewPrivs := cgiSetNoNewPrivs
+	oldClearSupplementaryGroups := cgiClearSupplementaryGroups
+	oldClearAmbientCaps := cgiClearAmbientCaps
+	oldDropCaps := cgiDropCaps
+	defer func() {
+		cgiSetNoNewPrivs = oldSetNoNewPrivs
+		cgiClearSupplementaryGroups = oldClearSupplementaryGroups
+		cgiClearAmbientCaps = oldClearAmbientCaps
+		cgiDropCaps = oldDropCaps
+	}()
+
+	var calls []string
+	cgiSetNoNewPrivs = func() error {
+		calls = append(calls, "no_new_privs")
+		return nil
+	}
+	cgiClearSupplementaryGroups = func() error {
+		calls = append(calls, "groups")
+		return nil
+	}
+	cgiClearAmbientCaps = func() error {
+		calls = append(calls, "ambient")
+		return nil
+	}
+	cgiDropCaps = func() error {
+		calls = append(calls, "caps")
+		return nil
+	}
+
+	if err := dropCGIPrivileges(); err != nil {
+		t.Fatalf("dropCGIPrivileges() error = %v", err)
+	}
+
+	want := []string{"no_new_privs", "groups", "ambient", "caps"}
+	if !reflect.DeepEqual(calls, want) {
+		t.Fatalf("dropCGIPrivileges() calls = %v, want %v", calls, want)
+	}
+}
+
+func TestDropCGIPrivilegesFailsWhenClearingSupplementaryGroupsFails(t *testing.T) {
+	oldSetNoNewPrivs := cgiSetNoNewPrivs
+	oldClearSupplementaryGroups := cgiClearSupplementaryGroups
+	oldClearAmbientCaps := cgiClearAmbientCaps
+	oldDropCaps := cgiDropCaps
+	defer func() {
+		cgiSetNoNewPrivs = oldSetNoNewPrivs
+		cgiClearSupplementaryGroups = oldClearSupplementaryGroups
+		cgiClearAmbientCaps = oldClearAmbientCaps
+		cgiDropCaps = oldDropCaps
+	}()
+
+	cgiSetNoNewPrivs = func() error { return nil }
+	cgiClearSupplementaryGroups = func() error { return errors.New("setgroups denied") }
+	cgiClearAmbientCaps = func() error {
+		t.Fatal("cgiClearAmbientCaps should not be called after group-drop failure")
+		return nil
+	}
+	cgiDropCaps = func() error {
+		t.Fatal("cgiDropCaps should not be called after group-drop failure")
+		return nil
+	}
+
+	err := dropCGIPrivileges()
+	if err == nil {
+		t.Fatal("dropCGIPrivileges() error = nil, want group-drop failure")
+	}
+	if !strings.Contains(err.Error(), "clear supplementary groups") {
+		t.Fatalf("dropCGIPrivileges() error = %v, want group-drop context", err)
 	}
 }
