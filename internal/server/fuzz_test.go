@@ -102,6 +102,9 @@ func FuzzSanitizeBody(f *testing.F) {
 		if strings.ContainsRune(string(got), '\x00') {
 			t.Fatal("sanitized body contains NUL")
 		}
+		if strings.ContainsRune(string(got), '\x7f') {
+			t.Fatal("sanitized body contains DEL")
+		}
 		if utf8Required && !utf8.Valid(got) {
 			t.Fatal("utf8-required sanitizeBody returned invalid UTF-8")
 		}

@@ -478,24 +478,67 @@ func sanitizeBody(raw []byte, utf8Required bool) ([]byte, error) {
 	if bytes.IndexByte(raw, 0) >= 0 {
 		return nil, fmt.Errorf("content contains NUL")
 	}
-	if utf8Required && !utf8.Valid(raw) {
-		return nil, fmt.Errorf("content is not valid utf-8")
-	}
 	raw = bytes.ReplaceAll(raw, []byte("\r\n"), []byte("\n"))
 	raw = bytes.ReplaceAll(raw, []byte("\r"), []byte("\n"))
+
+	if utf8Required {
+		if !utf8.Valid(raw) {
+			return nil, fmt.Errorf("content is not valid utf-8")
+		}
+		out := make([]byte, 0, len(raw)+8)
+		for len(raw) > 0 {
+			r, size := utf8.DecodeRune(raw)
+			raw = raw[size:]
+			switch {
+			case r == '\n':
+				out = append(out, '\r', '\n')
+			case validOutputRune(r):
+				out = append(out, string(r)...)
+			default:
+				out = append(out, '?')
+			}
+		}
+		return out, nil
+	}
 
 	out := make([]byte, 0, len(raw)+8)
 	for _, b := range raw {
 		switch {
 		case b == '\n':
 			out = append(out, '\r', '\n')
-		case b == '\t' || b >= 0x20:
+		case validOutputByte(b):
 			out = append(out, b)
 		default:
 			out = append(out, '?')
 		}
 	}
 	return out, nil
+}
+
+func validOutputRune(r rune) bool {
+	if r == '\t' {
+		return true
+	}
+	if r < 0x20 {
+		return false
+	}
+	if r == 0x7f || (r >= 0x80 && r <= 0x9f) {
+		return false
+	}
+	return true
+}
+
+func validOutputByte(b byte) bool {
+	if b == '\t' {
+		return true
+	}
+	if b < 0x20 {
+		return false
+	}
+	if b == 0x7f || (b >= 0x80 && b <= 0x9f) {
+		return false
+	}
+	return true
 }
 
 func joinSegments(parts ...[]byte) []byte {

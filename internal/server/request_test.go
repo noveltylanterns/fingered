@@ -107,6 +107,28 @@ func TestSanitizeBodyRejectsInvalidUTF8WhenRequired(t *testing.T) {
 	}
 }
 
+func TestSanitizeBodyReplacesDELAndC1Controls(t *testing.T) {
+	got, err := sanitizeBody([]byte("a\x7f\x85\tb\n"), false)
+	if err != nil {
+		t.Fatalf("sanitizeBody() error = %v", err)
+	}
+	want := "a??\tb\r\n"
+	if string(got) != want {
+		t.Fatalf("sanitizeBody() = %q, want %q", string(got), want)
+	}
+}
+
+func TestSanitizeBodyReplacesUnicodeC1ControlsWhenUTF8Required(t *testing.T) {
+	got, err := sanitizeBody([]byte("a\u0085\tb\n"), true)
+	if err != nil {
+		t.Fatalf("sanitizeBody() error = %v", err)
+	}
+	want := "a?\tb\r\n"
+	if string(got) != want {
+		t.Fatalf("sanitizeBody() = %q, want %q", string(got), want)
+	}
+}
+
 func TestCreditsBodyFormat(t *testing.T) {
 	want := "\r\n_____________________________\r\nfinger://lanterns.io/fingered\r\n"
 	if CreditsBody != want {
