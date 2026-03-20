@@ -60,14 +60,14 @@ func TestParseFingerRequestInvalid(t *testing.T) {
 }
 
 func TestParseFingersRequestValid(t *testing.T) {
-	req, err := parseRequest("/PLAN /mode=full alice@people\r\n", ProtocolFingers, false)
+	req, err := parseRequest("/PLAN /mode=full alice\r\n", ProtocolFingers, false)
 	if err != nil {
 		t.Fatalf("parseRequest() error = %v", err)
 	}
-	if req.Target != "alice@people" {
-		t.Fatalf("Target = %q, want %q", req.Target, "alice@people")
+	if req.Target != "alice" {
+		t.Fatalf("Target = %q, want %q", req.Target, "alice")
 	}
-	if req.Canonical != "/PLAN /mode=full alice@people" {
+	if req.Canonical != "/PLAN /mode=full alice" {
 		t.Fatalf("Canonical = %q", req.Canonical)
 	}
 }
@@ -80,6 +80,12 @@ func TestParseFingersRequestRejectsLFOnly(t *testing.T) {
 
 func TestParseFingersRequestRejectsMalformedChain(t *testing.T) {
 	if _, err := parseRequest("alice@@people\r\n", ProtocolFingers, false); err == nil {
+		t.Fatal("parseRequest() error = nil, want invalid")
+	}
+}
+
+func TestParseFingersRequestRejectsRelayChain(t *testing.T) {
+	if _, err := parseRequest("alice@people\r\n", ProtocolFingers, false); err == nil {
 		t.Fatal("parseRequest() error = nil, want invalid")
 	}
 }

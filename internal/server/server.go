@@ -536,7 +536,10 @@ func (s *Server) isTrustedProxy(addr netip.Addr) bool {
 }
 
 func parseProxyLine(line string) (netip.Addr, error) {
-	s := trimLineEnding(line)
+	if !strings.HasSuffix(line, "\r\n") {
+		return netip.Addr{}, errInvalidRequest
+	}
+	s := strings.TrimSuffix(line, "\r\n")
 	fields := strings.Fields(s)
 	if len(fields) != 6 {
 		return netip.Addr{}, errInvalidRequest

@@ -47,6 +47,8 @@ func FuzzParseFingersRequest(f *testing.F) {
 	seeds := []string{
 		"\r\n",
 		"alice\r\n",
+		"/PLAN alice\r\n",
+		"/mode=full alice\r\n",
 		"/PLAN alice@people\r\n",
 		"/mode=full alice@host1@host2\r\n",
 		"/PLAN\r\n",
@@ -71,12 +73,8 @@ func FuzzParseFingersRequest(f *testing.F) {
 		if strings.Contains(req.Canonical, "\r") || strings.Contains(req.Canonical, "\n") {
 			t.Fatalf("canonical request contains line breaks: %q", req.Canonical)
 		}
-		if req.Target != "" {
-			for _, part := range strings.Split(req.Target, "@") {
-				if !validTargetComponent(part) {
-					t.Fatalf("accepted invalid target component: %q", part)
-				}
-			}
+		if req.Target != "" && !validTargetComponent(req.Target) {
+			t.Fatalf("accepted invalid target component: %q", req.Target)
 		}
 		if len(req.Flags) > maxFlagsPerRequest {
 			t.Fatalf("accepted too many flags: %d", len(req.Flags))
@@ -116,6 +114,7 @@ func FuzzParseProxyLine(f *testing.F) {
 		"PROXY TCP6 2001:db8::10 2001:db8::20 40000 79\r\n",
 		"PROXY TCP4 2001:db8::10 203.0.113.4 40000 79\r\n",
 		"PROXY TCP4 198.51.100.10 203.0.113.4 0 79\r\n",
+		"PROXY TCP4 198.51.100.10 203.0.113.4 40000 79\n",
 		"PROXY UNKNOWN 198.51.100.10 203.0.113.4 40000 79\r\n",
 	}
 	for _, seed := range seeds {

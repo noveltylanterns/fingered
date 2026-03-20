@@ -271,16 +271,15 @@ func parseTarget(token string, protocol Protocol) (string, error) {
 		}
 		return token, nil
 	case ProtocolFingers:
-		parts := strings.Split(token, "@")
-		if len(parts) > maxTargetChainDepth {
+		// Relay chaining is not supported in the current implementation, so keep
+		// fingers targets to a single validated local component.
+		if strings.Contains(token, "@") {
 			return "", errInvalidRequest
 		}
-		for _, part := range parts {
-			if !validTargetComponent(part) {
-				return "", errInvalidRequest
-			}
+		if !validTargetComponent(token) {
+			return "", errInvalidRequest
 		}
-		return strings.Join(parts, "@"), nil
+		return token, nil
 	default:
 		return "", errInvalidRequest
 	}

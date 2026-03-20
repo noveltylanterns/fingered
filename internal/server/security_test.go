@@ -68,6 +68,12 @@ func TestParseProxyLineRejectsInvalidDestination(t *testing.T) {
 	}
 }
 
+func TestParseProxyLineRejectsLFOnly(t *testing.T) {
+	if _, err := parseProxyLine("PROXY TCP4 198.51.100.10 203.0.113.4 40000 79\n"); err == nil {
+		t.Fatal("parseProxyLine() error = nil, want invalid request")
+	}
+}
+
 func TestValidateCGIHelper(t *testing.T) {
 	root := filepath.Join(string(filepath.Separator), "srv", "fingered")
 	if err := validateCGIHelper(root, "/index.cgi", 3); err != nil {
