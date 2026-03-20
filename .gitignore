@@ -1,5 +1,4 @@
-.DS_Store
-debug/
+.tmp/
 *.log
 *.out
 *.test
