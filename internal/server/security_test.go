@@ -96,6 +96,12 @@ func TestParseProxyLineRejectsNonPublicSourceIPs(t *testing.T) {
 		"PROXY TCP6 2001:db8::1 2606:4700::1 40000 79\r\n",
 		"PROXY TCP6 ::ffff:192.168.1.1 2606:4700::1 40000 79\r\n",
 		"PROXY TCP6 ::ffff:127.0.0.1 2606:4700::1 40000 79\r\n",
+		// Strict whitespace: tabs, double spaces, leading space
+		"PROXY\tTCP4\t8.8.8.8\t1.1.1.1\t1234\t79\r\n",
+		"PROXY  TCP4  8.8.8.8  1.1.1.1  1234  79\r\n",
+		" PROXY TCP4 8.8.8.8 1.1.1.1 1234 79\r\n",
+		// IPv6 zone IDs
+		"PROXY TCP6 2606:4700::1%eth0 2606:4700::2 1234 79\r\n",
 	}
 	for _, line := range cases {
 		if _, err := parseProxyLine(line); err == nil {

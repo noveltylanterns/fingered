@@ -600,9 +600,16 @@ func parseProxyLine(line string) (netip.Addr, error) {
 		return netip.Addr{}, errInvalidRequest
 	}
 	s := strings.TrimSuffix(line, "\r\n")
-	fields := strings.Fields(s)
+	// PROXY v1 spec requires exactly single-space delimiters.
+	// Use strings.Split (not Fields) to reject tabs, multi-space, leading space.
+	fields := strings.Split(s, " ")
 	if len(fields) != 6 {
 		return netip.Addr{}, errInvalidRequest
+	}
+	for _, f := range fields {
+		if f == "" {
+			return netip.Addr{}, errInvalidRequest
+		}
 	}
 	if fields[0] != "PROXY" {
 		return netip.Addr{}, errInvalidRequest
@@ -685,6 +692,10 @@ func isPublicUnicastIP(ip netip.Addr) bool {
 func parseProxyAddr(network, value string) (netip.Addr, error) {
 	ip, err := netip.ParseAddr(value)
 	if err != nil {
+		return netip.Addr{}, errInvalidRequest
+	}
+	// Reject zone-scoped addresses — not valid in PROXY headers.
+	if ip.Zone() != "" {
 		return netip.Addr{}, errInvalidRequest
 	}
 	switch network {
