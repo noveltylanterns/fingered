@@ -31,48 +31,76 @@ func TestSanitizeLogCapsLength(t *testing.T) {
 }
 
 func TestParseProxyLineValidTCP4(t *testing.T) {
-	got, err := parseProxyLine("PROXY TCP4 198.51.100.10 203.0.113.4 40000 79\r\n")
+	got, err := parseProxyLine("PROXY TCP4 8.8.8.8 1.1.1.1 40000 79\r\n")
 	if err != nil {
 		t.Fatalf("parseProxyLine() error = %v", err)
 	}
-	want := netip.MustParseAddr("198.51.100.10")
+	want := netip.MustParseAddr("8.8.8.8")
 	if got != want {
 		t.Fatalf("parseProxyLine() = %v, want %v", got, want)
 	}
 }
 
 func TestParseProxyLineValidTCP6(t *testing.T) {
-	got, err := parseProxyLine("PROXY TCP6 2001:db8::10 2001:db8::20 40000 79\r\n")
+	got, err := parseProxyLine("PROXY TCP6 2606:4700::1 2606:4700::2 40000 79\r\n")
 	if err != nil {
 		t.Fatalf("parseProxyLine() error = %v", err)
 	}
-	want := netip.MustParseAddr("2001:db8::10")
+	want := netip.MustParseAddr("2606:4700::1")
 	if got != want {
 		t.Fatalf("parseProxyLine() = %v, want %v", got, want)
 	}
 }
 
 func TestParseProxyLineRejectsMismatchedFamily(t *testing.T) {
-	if _, err := parseProxyLine("PROXY TCP4 2001:db8::10 203.0.113.4 40000 79\r\n"); err == nil {
+	if _, err := parseProxyLine("PROXY TCP4 2606:4700::1 1.1.1.1 40000 79\r\n"); err == nil {
 		t.Fatal("parseProxyLine() error = nil, want invalid request")
 	}
 }
 
 func TestParseProxyLineRejectsInvalidPort(t *testing.T) {
-	if _, err := parseProxyLine("PROXY TCP4 198.51.100.10 203.0.113.4 0 79\r\n"); err == nil {
+	if _, err := parseProxyLine("PROXY TCP4 8.8.8.8 1.1.1.1 0 79\r\n"); err == nil {
 		t.Fatal("parseProxyLine() error = nil, want invalid request")
 	}
 }
 
 func TestParseProxyLineRejectsInvalidDestination(t *testing.T) {
-	if _, err := parseProxyLine("PROXY TCP6 2001:db8::10 203.0.113.4 40000 79\r\n"); err == nil {
+	if _, err := parseProxyLine("PROXY TCP6 2606:4700::1 1.1.1.1 40000 79\r\n"); err == nil {
 		t.Fatal("parseProxyLine() error = nil, want invalid request")
 	}
 }
 
 func TestParseProxyLineRejectsLFOnly(t *testing.T) {
-	if _, err := parseProxyLine("PROXY TCP4 198.51.100.10 203.0.113.4 40000 79\n"); err == nil {
+	if _, err := parseProxyLine("PROXY TCP4 8.8.8.8 1.1.1.1 40000 79\n"); err == nil {
 		t.Fatal("parseProxyLine() error = nil, want invalid request")
+	}
+}
+
+func TestParseProxyLineRejectsNonPublicSourceIPs(t *testing.T) {
+	cases := []string{
+		"PROXY TCP4 127.0.0.1 1.1.1.1 40000 79\r\n",
+		"PROXY TCP4 10.0.0.1 1.1.1.1 40000 79\r\n",
+		"PROXY TCP4 192.168.1.1 1.1.1.1 40000 79\r\n",
+		"PROXY TCP4 172.16.0.1 1.1.1.1 40000 79\r\n",
+		"PROXY TCP4 0.0.0.0 1.1.1.1 40000 79\r\n",
+		"PROXY TCP4 255.255.255.255 1.1.1.1 40000 79\r\n",
+		"PROXY TCP4 169.254.1.1 1.1.1.1 40000 79\r\n",
+		"PROXY TCP4 224.0.0.1 1.1.1.1 40000 79\r\n",
+		"PROXY TCP4 100.64.0.1 1.1.1.1 40000 79\r\n",
+		"PROXY TCP4 198.18.0.1 1.1.1.1 40000 79\r\n",
+		"PROXY TCP4 192.0.2.1 1.1.1.1 40000 79\r\n",
+		"PROXY TCP4 198.51.100.1 1.1.1.1 40000 79\r\n",
+		"PROXY TCP4 203.0.113.1 1.1.1.1 40000 79\r\n",
+		"PROXY TCP6 ::1 2606:4700::1 40000 79\r\n",
+		"PROXY TCP6 fc00::1 2606:4700::1 40000 79\r\n",
+		"PROXY TCP6 2001:db8::1 2606:4700::1 40000 79\r\n",
+		"PROXY TCP6 ::ffff:192.168.1.1 2606:4700::1 40000 79\r\n",
+		"PROXY TCP6 ::ffff:127.0.0.1 2606:4700::1 40000 79\r\n",
+	}
+	for _, line := range cases {
+		if _, err := parseProxyLine(line); err == nil {
+			t.Errorf("parseProxyLine(%q) error = nil, want rejection", line)
+		}
 	}
 }
 

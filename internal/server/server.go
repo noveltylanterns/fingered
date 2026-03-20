@@ -631,18 +631,53 @@ func parseProxyLine(line string) (netip.Addr, error) {
 
 // isPublicUnicastIP returns true if the address is a publicly routable unicast
 // IP, rejecting loopback, private (RFC1918/RFC4193), link-local, multicast,
-// unspecified, and broadcast addresses.
+// unspecified, broadcast, CGNAT (100.64/10), and benchmark (198.18/15) addresses.
+// IPv4-mapped IPv6 addresses (::ffff:x.x.x.x) are unmapped before checking.
 func isPublicUnicastIP(ip netip.Addr) bool {
 	if !ip.IsValid() {
 		return false
 	}
+	// Unmap ::ffff:x.x.x.x so that IPv4 checks work correctly.
+	ip = ip.Unmap()
 	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
 		ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
 		return false
 	}
-	// IPv4 broadcast 255.255.255.255
-	if ip.Is4() && ip == netip.AddrFrom4([4]byte{255, 255, 255, 255}) {
-		return false
+	// 2001:db8::/32 — IPv6 documentation (RFC 3849)
+	if ip.Is6() {
+		b := ip.As16()
+		if b[0] == 0x20 && b[1] == 0x01 && b[2] == 0x0d && b[3] == 0xb8 {
+			return false
+		}
+	}
+	if ip.Is4() {
+		b := ip.As4()
+		// 255.255.255.255 broadcast
+		if b == [4]byte{255, 255, 255, 255} {
+			return false
+		}
+		// 100.64.0.0/10 — CGNAT (RFC 6598)
+		if b[0] == 100 && b[1] >= 64 && b[1] <= 127 {
+			return false
+		}
+		// 198.18.0.0/15 — benchmarking (RFC 2544)
+		if b[0] == 198 && (b[1] == 18 || b[1] == 19) {
+			return false
+		}
+		// 192.0.0.0/24 — IETF protocol assignments (RFC 6890)
+		if b[0] == 192 && b[1] == 0 && b[2] == 0 {
+			return false
+		}
+		// 192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24 — documentation (RFC 5737)
+		if b[0] == 192 && b[1] == 0 && b[2] == 2 {
+			return false
+		}
+		if b[0] == 198 && b[1] == 51 && b[2] == 100 {
+			return false
+		}
+		if b[0] == 203 && b[1] == 0 && b[2] == 113 {
+			return false
+		}
 	}
 	return true
 }
