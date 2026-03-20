@@ -29,12 +29,13 @@ sudo ./bin/install_fingered.sh
 That installs the default `amd64` build to `/usr/local/sbin/fingered`, installs `/etc/fingered/fingered.conf`, creates the `finger` and `fingered` users, and installs the systemd unit unless `--nosysd` is used.
 It also installs the bundled network-only client as `/usr/local/bin/finger`.
 
-Other packaged architectures:
+All packaged architectures:
 
 ```bash
 sudo ./bin/install_fingered.sh --arch 386
-sudo ./bin/install_fingered.sh --arch arm64
-sudo ./bin/install_fingered.sh --arch riscv64
+sudo ./bin/install_fingered.sh --arch amd64
+sudo ./bin/install_fingered.sh --arch arm64 (UNTESTED)
+sudo ./bin/install_fingered.sh --arch riscv64 (UNTESTED)
 ```
 
 And if you want to get rid of it:
