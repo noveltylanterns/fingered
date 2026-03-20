@@ -273,16 +273,25 @@ func (s *Server) prepareConn(conn net.Conn, mode listenerMode, peerIP netip.Addr
 	}
 
 	if s.cfg.ProxyProtocol && s.isTrustedProxy(peerIP) {
+		if err := conn.SetReadDeadline(time.Now().Add(s.cfg.ReadTimeout)); err != nil {
+			return nil, nil, clientIP, prepareAction{silent: true}
+		}
 		line, complete, err := readLine(reader, 108)
 		if shouldSilentlyClose(err, complete) {
 			return nil, nil, clientIP, prepareAction{silent: true}
 		}
 		if err != nil {
-			return nil, nil, clientIP, prepareAction{err: err}
+			return nil, nil, clientIP, prepareAction{
+				silent:     true,
+				logSummary: fmt.Sprintf("proxy header read failed: %v", err),
+			}
 		}
 		ip, err := parseProxyLine(line)
 		if err != nil {
-			return nil, nil, clientIP, prepareAction{err: err}
+			return nil, nil, clientIP, prepareAction{
+				silent:     true,
+				logSummary: "invalid PROXY header on finger listener",
+			}
 		}
 		clientIP = ip
 	}
@@ -445,7 +454,10 @@ func (s *Server) runCGI(root, name string, req Request, utf8Required bool) ([]by
 	cmd.Env = []string{}
 	cmd.Stdin = bytes.NewReader([]byte(req.Canonical + "\n"))
 	cmd.ExtraFiles = []*os.File{cgiFile}
-	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL}
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Pdeathsig: syscall.SIGKILL,
+		Setpgid:   true,
+	}
 
 	var stdout cappedBuffer
 	stdout.max = s.cfg.CGIMaxStdoutBytes
@@ -456,6 +468,10 @@ func (s *Server) runCGI(root, name string, req Request, utf8Required bool) ([]by
 
 	err = cmd.Run()
 	if ctx.Err() == context.DeadlineExceeded {
+		// Kill the entire process group to reap any forked children.
+		if cmd.Process != nil {
+			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		}
 		return nil, true, fmt.Errorf("cgi timeout")
 	}
 	if stdout.exceeded {
@@ -598,6 +614,9 @@ func parseProxyLine(line string) (netip.Addr, error) {
 	if err != nil {
 		return netip.Addr{}, errInvalidRequest
 	}
+	if !isPublicUnicastIP(src) {
+		return netip.Addr{}, errInvalidRequest
+	}
 	if _, err := parseProxyAddr(fields[1], fields[3]); err != nil {
 		return netip.Addr{}, errInvalidRequest
 	}
@@ -608,6 +627,24 @@ func parseProxyLine(line string) (netip.Addr, error) {
 		return netip.Addr{}, errInvalidRequest
 	}
 	return src, nil
+}
+
+// isPublicUnicastIP returns true if the address is a publicly routable unicast
+// IP, rejecting loopback, private (RFC1918/RFC4193), link-local, multicast,
+// unspecified, and broadcast addresses.
+func isPublicUnicastIP(ip netip.Addr) bool {
+	if !ip.IsValid() {
+		return false
+	}
+	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
+		ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
+		return false
+	}
+	// IPv4 broadcast 255.255.255.255
+	if ip.Is4() && ip == netip.AddrFrom4([4]byte{255, 255, 255, 255}) {
+		return false
+	}
+	return true
 }
 
 func parseProxyAddr(network, value string) (netip.Addr, error) {
