@@ -88,7 +88,7 @@ sudo tail -n 50 /home/finger/logs/fingered/error.log
 5. Run the packaged remote-style smoke probe against the local service:
 
 ```bash
-./scripts/smoke_remote.sh 127.0.0.1 7979
+./debug/smoke_remote.sh 127.0.0.1 7979
 ```
 
 If you want request logging too, set `log_requests = yes` in `/etc/fingered/fingered.conf` and restart the service.
