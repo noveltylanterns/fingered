@@ -37,7 +37,7 @@ sudo ./bin/install_fingered.sh --arch arm64
 sudo ./bin/install_fingered.sh --arch riscv64
 ```
 
-For a clean reset before reinstalling:
+And if you want to get rid of it:
 
 ```bash
 sudo ./bin/uninstall_fingered.sh
