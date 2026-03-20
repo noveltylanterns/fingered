@@ -12,9 +12,13 @@ import (
 )
 
 const (
-	cgiATEmptyPath = 0x1000
-	cgiOpenPath    = 0x200000
-	cgiOpenFlags   = cgiOpenPath | syscall.O_NOFOLLOW | syscall.O_CLOEXEC
+	cgiATEmptyPath  = 0x1000
+	cgiOpenPath     = 0x200000
+	cgiOpenFlags    = cgiOpenPath | syscall.O_NOFOLLOW | syscall.O_CLOEXEC
+	cgiPRNoNewPrivs = 0x26
+	cgiPRCapAmbient = 0x2f
+	cgiPRCapClear   = 0x4
+	cgiCapVersion3  = 0x20080522
 )
 
 func ExecCGIHelper(root, argv0 string, fd int) error {
@@ -29,6 +33,9 @@ func ExecCGIHelper(root, argv0 string, fd int) error {
 	}
 	if err := syscall.Chdir("/"); err != nil {
 		return fmt.Errorf("chdir jail root: %w", err)
+	}
+	if err := dropCGIPrivileges(); err != nil {
+		return err
 	}
 	return execveatFD(fd, argv0)
 }
@@ -75,6 +82,37 @@ func execveatFD(fd int, argv0 string) error {
 		return errno
 	}
 	return syscall.EINVAL
+}
+
+type cgiCapHeader struct {
+	Version uint32
+	Pid     int32
+}
+
+type cgiCapData struct {
+	Effective   uint32
+	Permitted   uint32
+	Inheritable uint32
+}
+
+func dropCGIPrivileges() error {
+	if _, _, errno := syscall.RawSyscall6(syscall.SYS_PRCTL, cgiPRNoNewPrivs, 1, 0, 0, 0, 0); errno != 0 && errno != syscall.EINVAL {
+		return fmt.Errorf("set no_new_privs: %w", errno)
+	}
+
+	if _, _, errno := syscall.RawSyscall6(syscall.SYS_PRCTL, cgiPRCapAmbient, cgiPRCapClear, 0, 0, 0, 0); errno != 0 && errno != syscall.EINVAL {
+		return fmt.Errorf("clear ambient capabilities: %w", errno)
+	}
+
+	hdr := cgiCapHeader{Version: cgiCapVersion3}
+	data := [2]cgiCapData{}
+	_, _, errno := syscall.RawSyscall(syscall.SYS_CAPSET, uintptr(unsafe.Pointer(&hdr)), uintptr(unsafe.Pointer(&data[0])), 0)
+	runtime.KeepAlive(hdr)
+	runtime.KeepAlive(data)
+	if errno != 0 {
+		return fmt.Errorf("drop capabilities: %w", errno)
+	}
+	return nil
 }
 
 func stringPtrs(values []string) ([]*byte, error) {

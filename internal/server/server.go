@@ -445,6 +445,7 @@ func (s *Server) runCGI(root, name string, req Request, utf8Required bool) ([]by
 	cmd.Env = []string{}
 	cmd.Stdin = bytes.NewReader([]byte(req.Canonical + "\n"))
 	cmd.ExtraFiles = []*os.File{cgiFile}
+	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL}
 
 	var stdout cappedBuffer
 	stdout.max = s.cfg.CGIMaxStdoutBytes
