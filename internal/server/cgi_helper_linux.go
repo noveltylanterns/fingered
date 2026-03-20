@@ -97,7 +97,7 @@ type cgiCapData struct {
 
 var (
 	cgiSetNoNewPrivs = func() error {
-		if _, _, errno := syscall.RawSyscall6(syscall.SYS_PRCTL, cgiPRNoNewPrivs, 1, 0, 0, 0, 0); errno != 0 && errno != syscall.EINVAL {
+		if _, _, errno := syscall.RawSyscall6(syscall.SYS_PRCTL, cgiPRNoNewPrivs, 1, 0, 0, 0, 0); errno != 0 {
 			return errno
 		}
 		return nil

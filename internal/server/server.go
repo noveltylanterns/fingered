@@ -775,10 +775,9 @@ func openRegularExecNoFollow(path string) (*os.File, bool, error) {
 		_ = file.Close()
 		return nil, true, err
 	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		_ = file.Close()
-		return nil, true, fmt.Errorf("symlinks are not allowed")
-	}
+	// fstat never reports ModeSymlink — O_NOFOLLOW|O_PATH already prevents
+	// opening through symlinks. The IsRegular check below catches anything
+	// that isn't a plain file (including an O_PATH fd to a symlink inode).
 	if !info.Mode().IsRegular() {
 		_ = file.Close()
 		return nil, true, fmt.Errorf("not a regular file")
