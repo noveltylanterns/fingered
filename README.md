@@ -1,6 +1,6 @@
 # fingered
 
-`fingered` is a small Finger daemon written in Go by GPT-5.4, and shipped as a self-contained Linux binary. Existing daemons for `finger://` are notoriously insecure & essentially abandonware. But the protocol itself is a simple platform-agnostic concept, so reimplementing new software around it is trivial for a machine.
+`fingered` is a small Finger daemon written in Go by Claude & GPT-5.4, and shipped as a self-contained Linux binary. Existing daemons for `finger://` are notoriously insecure & essentially abandonware. But the protocol itself is a simple platform-agnostic concept, so reimplementing new software around it is trivial for a machine.
 
 The real question is: Can the machine produce a `finger://` utility that won't fall apart? How much time will be required to debug and pentest it? Will the code be maintainable in 6 months? These are the questions we need answers for.
 
