@@ -4,6 +4,8 @@
 
 The real question is: Can the machine produce a `finger://` utility that won't fall apart? How much time will be required to debug and pentest it? Will the code be maintainable in 6 months? These are the questions we need answers for.
 
+If you would like to know more about `finger://` in general, read [this article](https://bestpoint.institute/tools/finger).
+
 
 ## Features
 
